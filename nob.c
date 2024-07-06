@@ -25,6 +25,7 @@ bool target_3d(int *argc, char*** argv) {
     gcc(&cmd);
     nob_cmd_append(&cmd, "-o", _3D_OUTPUT);
     nob_cmd_append(&cmd, "./src/3d.c");
+    nob_cmd_append(&cmd, "./src/3dl.c");
     nob_cmd_append(&cmd, "-lraylibdll");
     if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 

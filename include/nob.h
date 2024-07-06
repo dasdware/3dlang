@@ -306,6 +306,8 @@ typedef struct {
 const char *nob_temp_sv_to_cstr(Nob_String_View sv);
 
 Nob_String_View nob_sv_chop_by_delim(Nob_String_View *sv, char delim);
+Nob_String_View nob_sv_trim_right(Nob_String_View sv);
+Nob_String_View nob_sv_trim_left(Nob_String_View sv);
 Nob_String_View nob_sv_trim(Nob_String_View sv);
 bool nob_sv_eq(Nob_String_View a, Nob_String_View b);
 Nob_String_View nob_sv_from_cstr(const char *cstr);
@@ -313,6 +315,12 @@ Nob_String_View nob_sv_from_parts(const char *data, size_t count);
 Nob_String_View nob_sv_last_part_by_delim(Nob_String_View sv, char delim);
 Nob_String_View nob_sv_filename_of(Nob_String_View path);
 Nob_String_View nob_sv_shift_args(int *argc, char ***argv);
+
+#define nob_sv_advance(sv) \
+    do {                   \
+        (sv).data++;       \
+        (sv).count--;      \
+    } while (false)
 
 // printf macros for String_View
 #ifndef SV_Fmt
