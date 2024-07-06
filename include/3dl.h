@@ -85,6 +85,8 @@ typedef struct _TD_BoardHistory
 
 typedef struct
 {
+    int tw_row;
+    int tw_col;
     int row;
     int col;
     int value;

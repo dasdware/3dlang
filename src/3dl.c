@@ -309,6 +309,8 @@ void _td_collect_timewarps(TD_Board* board, TD_Timewarps* timewarps) {
             case CELL_TIMEWARP: {
                 if (_td_retrieve_timewarp_operands(board, col, row, &op_v, &op_dx, &op_dy, &op_dt)) {
                     TD_Timewarp tw = {
+                        .tw_col = col,
+                        .tw_row = row,
                         .col = col - op_dx->value,
                         .row = row - op_dy->value,
                         .value = op_v->value,
@@ -400,6 +402,8 @@ void td_forward(TD_BoardHistory* history) {
             for (size_t i = 0; i < timewarps.count; ++i) {
                 TD_Timewarp tw = timewarps.items[i];
                 td_set_cell(next_board, tw.col, tw.row, make_number_cell(tw.value));
+                td_activate_cell(next_board, tw.tw_col, tw.tw_row);
+                td_activate_cell(next_board, tw.col, tw.row);
             }
 
             return;
