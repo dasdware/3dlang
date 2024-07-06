@@ -103,68 +103,62 @@ int main(int argc, char** argv)
                         Rectangle grid_bounds = rl_rectangle(WHICH_UNANCHORED);
                         int cell_size = min(grid_bounds.width / history.cols, grid_bounds.height / history.rows);
 
-                        for (size_t x = 0; x < history.cols; ++x) {
-                            for (size_t y = 0; y < history.rows; ++y) {
-                                size_t ox = grid_bounds.x + x * cell_size;
-                                size_t oy = grid_bounds.y + y * cell_size;
+                        TD_FOREACH(current_board, cursor) {
+                            size_t ox = grid_bounds.x + cursor.col * cell_size;
+                            size_t oy = grid_bounds.y + cursor.row * cell_size;
 
-                                TD_Cell* cell = td_cell_at(current_board, x, y);
-
-
-                                if (cell->active) {
-                                    DrawRectangle(ox, oy, cell_size, cell_size, ACTIVE_CELL_COLOR);
-                                } else if (cell->input_kind == CELL_INPUT_A || cell->input_kind == CELL_INPUT_B) {
-                                    DrawRectangle(ox, oy, cell_size, cell_size, INPUT_CELL_COLOR);
-                                    if (cell->input_kind == CELL_INPUT_A) {
-                                        DrawText("A", ox + 4, oy + 2, cell_size / 8, BROWN);
-                                    } else if (cell->input_kind == CELL_INPUT_B) {
-                                        DrawText("B", ox + 4, oy + 2, cell_size / 8, BROWN);
-                                    }
-                                } else if (cell->kind == CELL_STOP) {
-                                    DrawRectangle(ox, oy, cell_size, cell_size, STOP_CELL_COLOR);
-                                    DrawText("S", ox + 4, oy + 2, cell_size / 8, RED);
+                            if (cursor.cell->active) {
+                                DrawRectangle(ox, oy, cell_size, cell_size, ACTIVE_CELL_COLOR);
+                            } else if (cursor.cell->input_kind == CELL_INPUT_A || cursor.cell->input_kind == CELL_INPUT_B) {
+                                DrawRectangle(ox, oy, cell_size, cell_size, INPUT_CELL_COLOR);
+                                if (cursor.cell->input_kind == CELL_INPUT_A) {
+                                    DrawText("A", ox + 4, oy + 2, cell_size / 8, BROWN);
+                                } else if (cursor.cell->input_kind == CELL_INPUT_B) {
+                                    DrawText("B", ox + 4, oy + 2, cell_size / 8, BROWN);
                                 }
-
-                                Color text_color = GRAY;
-
-                                switch (cell->kind) {
-                                case CELL_EMPTY:
-                                case CELL_STOP:
-                                    DrawCircle(ox + cell_size / 2, oy + cell_size / 2, cell_size / 16, LIGHTGRAY);
-                                    break;
-                                case     CELL_NUMBER: {
-                                    const char* text = TextFormat("%d", cell->value);
-                                    int text_height = cell_size * 1 / 2;
-                                    int text_width = MeasureText(text, text_height);
-                                    DrawText(text, ox + cell_size / 2 - text_width / 2, oy + cell_size / 2 - text_height / 2, text_height, text_color);
-                                    break;
-                                }
-                                case CELL_MOVE_LEFT:
-                                case CELL_MOVE_RIGHT:
-                                case CELL_MOVE_UP:
-                                case CELL_MOVE_DOWN:
-                                case CELL_CALC_ADD:
-                                case CELL_CALC_SUBTRACT:
-                                case CELL_CALC_DIVIDE:
-                                case CELL_CALC_MULTIPLY:
-                                case CELL_CALC_REMAINDER:
-                                case CELL_CMP_EQUAL:
-                                case CELL_CMP_NOTEQUAL:
-                                case CELL_TIMEWARP: {
-                                    const char* text = symbols[cell->kind];
-                                    int text_height = cell_size * 1 / 2;
-                                    int text_width = MeasureText(text, text_height);
-                                    DrawText(text, ox + cell_size / 2 - text_width / 2, oy + cell_size / 2 - text_height / 2, text_height, text_color);
-                                    break;
-                                }
-                                default: {
-                                    DrawRectangle(ox, oy, cell_size, cell_size, RED);
-                                    DrawText(td_cell_kind_name(cell->kind), ox + 4, oy + 4, 16, GRAY);
-                                    break;
-                                }
-                                }
+                            } else if (cursor.cell->kind == CELL_STOP) {
+                                DrawRectangle(ox, oy, cell_size, cell_size, STOP_CELL_COLOR);
+                                DrawText("S", ox + 4, oy + 2, cell_size / 8, RED);
                             }
 
+                            Color text_color = GRAY;
+
+                            switch (cursor.cell->kind) {
+                            case CELL_EMPTY:
+                            case CELL_STOP:
+                                DrawCircle(ox + cell_size / 2, oy + cell_size / 2, cell_size / 16, LIGHTGRAY);
+                                break;
+                            case     CELL_NUMBER: {
+                                const char* text = TextFormat("%d", cursor.cell->value);
+                                int text_height = cell_size * 1 / 2;
+                                int text_width = MeasureText(text, text_height);
+                                DrawText(text, ox + cell_size / 2 - text_width / 2, oy + cell_size / 2 - text_height / 2, text_height, text_color);
+                                break;
+                            }
+                            case CELL_MOVE_LEFT:
+                            case CELL_MOVE_RIGHT:
+                            case CELL_MOVE_UP:
+                            case CELL_MOVE_DOWN:
+                            case CELL_CALC_ADD:
+                            case CELL_CALC_SUBTRACT:
+                            case CELL_CALC_DIVIDE:
+                            case CELL_CALC_MULTIPLY:
+                            case CELL_CALC_REMAINDER:
+                            case CELL_CMP_EQUAL:
+                            case CELL_CMP_NOTEQUAL:
+                            case CELL_TIMEWARP: {
+                                const char* text = symbols[cursor.cell->kind];
+                                int text_height = cell_size * 1 / 2;
+                                int text_width = MeasureText(text, text_height);
+                                DrawText(text, ox + cell_size / 2 - text_width / 2, oy + cell_size / 2 - text_height / 2, text_height, text_color);
+                                break;
+                            }
+                            default: {
+                                DrawRectangle(ox, oy, cell_size, cell_size, RED);
+                                DrawText(td_cell_kind_name(cursor.cell->kind), ox + 4, oy + 4, 16, GRAY);
+                                break;
+                            }
+                            }
                         }
 
                         for (size_t x = 0; x <= history.cols; ++x) {

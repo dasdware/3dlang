@@ -5,6 +5,9 @@
 #include <error.h>
 #include <stdbool.h>
 
+#define TD_FOREACH(board, cursor) \
+    for (TD_BoardCursor cursor = td_cursor_first(board); cursor.valid; cursor = td_cursor_next(cursor))
+
 typedef enum
 {
     CELL_EMPTY,
@@ -66,6 +69,15 @@ typedef struct
     size_t time;
 } TD_Board;
 
+typedef struct
+{
+    TD_Board* board;
+    int row;
+    int col;
+    TD_Cell* cell;
+    bool valid;
+} TD_BoardCursor;
+
 typedef struct _TD_BoardHistory
 {
     size_t cols;
@@ -123,5 +135,9 @@ void td_back(TD_BoardHistory* history);
 void td_fast_forward(TD_BoardHistory* history);
 void td_rewind(TD_BoardHistory* history);
 void td_reset(TD_BoardHistory* history, int input_a, int input_b);
+
+// Cursor operations
+TD_BoardCursor td_cursor_first(TD_Board* board);
+TD_BoardCursor td_cursor_next(TD_BoardCursor cursor);
 
 #endif // __3DL_H

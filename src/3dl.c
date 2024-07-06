@@ -243,86 +243,83 @@ TD_Board* td_current_board(TD_BoardHistory* history) {
     return &history->items[history->tick];
 }
 
-bool _td_retrieve_operands(TD_Board* board, size_t col, size_t row, TD_Cell** left, TD_Cell** right) {
-    *left = td_cell_at(board, col - 1, row);
-    *right = td_cell_at(board, col, row - 1);
+bool _td_retrieve_operands(TD_BoardCursor cursor, TD_Cell** left, TD_Cell** right) {
+    *left = td_cell_at(cursor.board, cursor.col - 1, cursor.row);
+    *right = td_cell_at(cursor.board, cursor.col, cursor.row - 1);
     return (*left)->kind == CELL_NUMBER
            && (*right)->kind == CELL_NUMBER;
 }
 
-bool _td_retrieve_timewarp_operands(TD_Board* board, size_t col, size_t row,
+bool _td_retrieve_timewarp_operands(TD_BoardCursor cursor,
                                     TD_Cell** op_v, TD_Cell** op_dx, TD_Cell** op_dy, TD_Cell** op_dt) {
-    *op_v = td_cell_at(board, col, row - 1);
-    *op_dx = td_cell_at(board, col - 1, row);
-    *op_dy = td_cell_at(board, col + 1, row);
-    *op_dt = td_cell_at(board, col, row + 1);
+    *op_v = td_cell_at(cursor.board, cursor.col, cursor.row - 1);
+    *op_dx = td_cell_at(cursor.board, cursor.col - 1, cursor.row);
+    *op_dy = td_cell_at(cursor.board, cursor.col + 1, cursor.row);
+    *op_dt = td_cell_at(cursor.board, cursor.col, cursor.row + 1);
     return (*op_v)->kind == CELL_NUMBER
            && (*op_dx)->kind == CELL_NUMBER
            && (*op_dy)->kind == CELL_NUMBER
            && (*op_dt)->kind == CELL_NUMBER;
 }
 
-void _td_calculate(TD_Board* board, size_t col, size_t row, int value) {
-    td_set_cell(board, col - 1, row, make_empty_cell());
-    td_set_cell(board, col, row - 1, make_empty_cell());
-    td_set_cell(board, col + 1, row, make_number_cell(value));
-    td_set_cell(board, col, row + 1, make_number_cell(value));
-    td_activate_cell(board, col, row);
-    td_activate_cell(board, col + 1, row);
-    td_activate_cell(board, col, row + 1);
+void _td_calculate(TD_Board* board, TD_BoardCursor position, int value) {
+    td_set_cell(board, position.col - 1, position.row, make_empty_cell());
+    td_set_cell(board, position.col, position.row - 1, make_empty_cell());
+    td_set_cell(board, position.col + 1, position.row, make_number_cell(value));
+    td_set_cell(board, position.col, position.row + 1, make_number_cell(value));
+    td_activate_cell(board, position.col, position.row);
+    td_activate_cell(board, position.col + 1, position.row);
+    td_activate_cell(board, position.col, position.row + 1);
 }
 
-void _td_move_left(TD_Board* board, size_t col, size_t row, TD_Cell* operand) {
-    td_set_cell(board, col + 1, row, make_empty_cell());
-    td_set_cell(board, col - 1, row, *operand);
-    td_activate_cell(board, col, row);
-    td_activate_cell(board, col - 1, row);
+void _td_move_left(TD_Board* board, TD_BoardCursor position, TD_Cell* operand) {
+    td_set_cell(board, position.col + 1, position.row, make_empty_cell());
+    td_set_cell(board, position.col - 1, position.row, *operand);
+    td_activate_cell(board, position.col, position.row);
+    td_activate_cell(board, position.col - 1, position.row);
 }
 
-void _td_move_right(TD_Board* board, size_t col, size_t row, TD_Cell* operand) {
-    td_set_cell(board, col - 1, row, make_empty_cell());
-    td_set_cell(board, col + 1, row, *operand);
-    td_activate_cell(board, col, row);
-    td_activate_cell(board, col + 1, row);
+void _td_move_right(TD_Board* board, TD_BoardCursor position, TD_Cell* operand) {
+    td_set_cell(board, position.col - 1, position.row, make_empty_cell());
+    td_set_cell(board, position.col + 1, position.row, *operand);
+    td_activate_cell(board, position.col, position.row);
+    td_activate_cell(board, position.col + 1, position.row);
 }
 
-void _td_move_up(TD_Board* board, size_t col, size_t row, TD_Cell* operand) {
-    td_set_cell(board, col, row + 1, make_empty_cell());
-    td_set_cell(board, col, row - 1, *operand);
-    td_activate_cell(board, col, row);
-    td_activate_cell(board, col, row - 1);
+void _td_move_up(TD_Board* board, TD_BoardCursor position, TD_Cell* operand) {
+    td_set_cell(board, position.col, position.row + 1, make_empty_cell());
+    td_set_cell(board, position.col, position.row - 1, *operand);
+    td_activate_cell(board, position.col, position.row);
+    td_activate_cell(board, position.col, position.row - 1);
 }
 
-void _td_move_down(TD_Board* board, size_t col, size_t row, TD_Cell* operand) {
-    td_set_cell(board, col, row - 1, make_empty_cell());
-    td_set_cell(board, col, row + 1, *operand);
-    td_activate_cell(board, col, row);
-    td_activate_cell(board, col, row + 1);
+void _td_move_down(TD_Board* board, TD_BoardCursor position, TD_Cell* operand) {
+    td_set_cell(board, position.col, position.row - 1, make_empty_cell());
+    td_set_cell(board, position.col, position.row + 1, *operand);
+    td_activate_cell(board, position.col, position.row);
+    td_activate_cell(board, position.col, position.row + 1);
 }
 
 void _td_collect_timewarps(TD_Board* board, TD_Timewarps* timewarps) {
     TD_Cell *op_v, *op_dx, *op_dy, *op_dt;
-    for (int col = 0; col < (int)board->history->cols; ++col) {
-        for (int row = 0; row < (int)board->history->cols; ++row) {
-            TD_Cell* current_cell = td_cell_at(board, col, row);
-            switch (current_cell->kind) {
-            case CELL_TIMEWARP: {
-                if (_td_retrieve_timewarp_operands(board, col, row, &op_v, &op_dx, &op_dy, &op_dt)) {
-                    TD_Timewarp tw = {
-                        .tw_col = col,
-                        .tw_row = row,
-                        .col = col - op_dx->value,
-                        .row = row - op_dy->value,
-                        .value = op_v->value,
-                        .dt = op_dt->value,
-                    };
-                    nob_da_append(timewarps, tw);
-                }
-                break;
+    TD_FOREACH(board, cursor) {
+        switch (cursor.cell->kind) {
+        case CELL_TIMEWARP: {
+            if (_td_retrieve_timewarp_operands(cursor, &op_v, &op_dx, &op_dy, &op_dt)) {
+                TD_Timewarp tw = {
+                    .tw_col = cursor.col,
+                    .tw_row = cursor.row,
+                    .col = cursor.col - op_dx->value,
+                    .row = cursor.row - op_dy->value,
+                    .value = op_v->value,
+                    .dt = op_dt->value,
+                };
+                nob_da_append(timewarps, tw);
             }
-            default:
-                break;
-            }
+            break;
+        }
+        default:
+            break;
         }
     }
 }
@@ -338,10 +335,8 @@ TD_Board* _td_clone_board(TD_BoardHistory *history, size_t index, int time) {
     new_board.cells = arena_alloc(&history->cells_arena, history->cells_bytes);
     memcpy(new_board.cells, board->cells, history->cells_bytes);
 
-    for (int col = 0; col < (int)history->cols; ++col) {
-        for (int row = 0; row < (int)history->rows; ++row) {
-            td_cell_at(&new_board, col, row)->active = false;
-        }
+    TD_FOREACH(&new_board, cursor) {
+        cursor.cell->active = false;
     }
 
     nob_da_append(history, new_board);
@@ -411,108 +406,99 @@ void td_forward(TD_BoardHistory* history) {
 
         TD_Board* next_board = _td_clone_board(history, history->count - 1, current_board->time + 1);
         TD_Cell *op_left,  *op_right;
-        for (int col = 0; col < (int)history->cols; ++col) {
-            for (int row = 0; row < (int)history->rows; ++row) {
-                TD_Cell* current_cell = td_cell_at(current_board, col, row);
-                switch (current_cell->kind) {
-                case CELL_CALC_ADD: {
-                    if (_td_retrieve_operands(current_board, col, row, &op_left, &op_right)) {
-                        _td_calculate(next_board, col, row, op_left->value + op_right->value);
-                    }
-                    break;
+        TD_FOREACH(current_board, cursor) {
+            switch (cursor.cell->kind) {
+            case CELL_CALC_ADD: {
+                if (_td_retrieve_operands(cursor, &op_left, &op_right)) {
+                    _td_calculate(next_board, cursor, op_left->value + op_right->value);
                 }
-                case CELL_CALC_SUBTRACT: {
-                    if (_td_retrieve_operands(current_board, col, row, &op_left, &op_right)) {
-                        _td_calculate(next_board, col, row, op_left->value - op_right->value);
-                    }
-                    break;
+                break;
+            }
+            case CELL_CALC_SUBTRACT: {
+                if (_td_retrieve_operands(cursor, &op_left, &op_right)) {
+                    _td_calculate(next_board, cursor, op_left->value - op_right->value);
                 }
-                case CELL_CALC_MULTIPLY: {
-                    if (_td_retrieve_operands(current_board, col, row, &op_left, &op_right)) {
-                        _td_calculate(next_board, col, row, op_left->value * op_right->value);
-                    }
-                    break;
+                break;
+            }
+            case CELL_CALC_MULTIPLY: {
+                if (_td_retrieve_operands(cursor, &op_left, &op_right)) {
+                    _td_calculate(next_board, cursor, op_left->value * op_right->value);
                 }
-                case CELL_CALC_DIVIDE: {
-                    if (_td_retrieve_operands(current_board, col, row, &op_left, &op_right)) {
-                        _td_calculate(next_board, col, row, op_left->value / op_right->value);
-                    }
-                    break;
+                break;
+            }
+            case CELL_CALC_DIVIDE: {
+                if (_td_retrieve_operands(cursor, &op_left, &op_right)) {
+                    _td_calculate(next_board, cursor, op_left->value / op_right->value);
                 }
-                case CELL_CALC_REMAINDER: {
-                    if (_td_retrieve_operands(current_board, col, row, &op_left, &op_right)) {
-                        _td_calculate(next_board, col, row, op_left->value % op_right->value);
-                    }
-                    break;
+                break;
+            }
+            case CELL_CALC_REMAINDER: {
+                if (_td_retrieve_operands(cursor, &op_left, &op_right)) {
+                    _td_calculate(next_board, cursor, op_left->value % op_right->value);
                 }
-                case CELL_MOVE_LEFT: {
-                    TD_Cell* operand = td_cell_at(current_board, col + 1, row );
-                    if (operand->kind != CELL_EMPTY) {
-                        _td_move_left(next_board, col, row, operand);
-                    }
-                    break;
+                break;
+            }
+            case CELL_MOVE_LEFT: {
+                TD_Cell* operand = td_cell_at(current_board, cursor.col + 1, cursor.row );
+                if (operand->kind != CELL_EMPTY) {
+                    _td_move_left(next_board, cursor, operand);
                 }
-                case CELL_MOVE_RIGHT: {
-                    TD_Cell* operand = td_cell_at(current_board, col - 1, row );
-                    if (operand->kind != CELL_EMPTY) {
-                        _td_move_right(next_board, col, row, operand);
-                    }
-                    break;
+                break;
+            }
+            case CELL_MOVE_RIGHT: {
+                TD_Cell* operand = td_cell_at(current_board, cursor.col - 1, cursor.row );
+                if (operand->kind != CELL_EMPTY) {
+                    _td_move_right(next_board, cursor, operand);
                 }
-                case CELL_MOVE_UP: {
-                    TD_Cell* operand = td_cell_at(current_board, col, row + 1);
-                    if (operand->kind != CELL_EMPTY) {
-                        _td_move_up(next_board, col, row, operand);
-                    }
-                    break;
+                break;
+            }
+            case CELL_MOVE_UP: {
+                TD_Cell* operand = td_cell_at(current_board, cursor.col, cursor.row + 1);
+                if (operand->kind != CELL_EMPTY) {
+                    _td_move_up(next_board, cursor, operand);
                 }
-                case CELL_MOVE_DOWN: {
-                    TD_Cell* operand = td_cell_at(current_board, col, row - 1);
-                    if (operand->kind != CELL_EMPTY) {
-                        _td_move_down(next_board, col, row, operand);
-                    }
-                    break;
+                break;
+            }
+            case CELL_MOVE_DOWN: {
+                TD_Cell* operand = td_cell_at(current_board, cursor.col, cursor.row - 1);
+                if (operand->kind != CELL_EMPTY) {
+                    _td_move_down(next_board, cursor, operand);
                 }
-                case CELL_CMP_EQUAL: {
-                    if (_td_retrieve_operands(current_board, col, row, &op_left, &op_right)) {
-                        if (op_left->value == op_right->value) {
-                            _td_move_right(next_board, col, row, op_left);
-                            _td_move_down(next_board, col, row, op_right);
-                        }
+                break;
+            }
+            case CELL_CMP_EQUAL: {
+                if (_td_retrieve_operands(cursor, &op_left, &op_right)) {
+                    if (op_left->value == op_right->value) {
+                        _td_move_right(next_board, cursor, op_left);
+                        _td_move_down(next_board, cursor, op_right);
                     }
-                    break;
                 }
-                case CELL_CMP_NOTEQUAL: {
-                    if (_td_retrieve_operands(current_board, col, row, &op_left, &op_right)) {
-                        if (op_left->value != op_right->value) {
-                            _td_move_right(next_board, col, row, op_left);
-                            _td_move_down(next_board, col, row, op_right);
-                        }
+                break;
+            }
+            case CELL_CMP_NOTEQUAL: {
+                if (_td_retrieve_operands(cursor, &op_left, &op_right)) {
+                    if (op_left->value != op_right->value) {
+                        _td_move_right(next_board, cursor, op_left);
+                        _td_move_down(next_board, cursor, op_right);
                     }
-                    break;
                 }
-                case CELL_TIMEWARP:
-                case CELL_EMPTY:
-                case CELL_NUMBER:
-                case CELL_STOP:
-                    break;
+                break;
+            }
+            case CELL_TIMEWARP:
+            case CELL_EMPTY:
+            case CELL_NUMBER:
+            case CELL_STOP:
+                break;
 
-                default:
-                    printf("Don't know what to do with cell of kind `%s`.\n", td_cell_kind_name(current_cell->kind));
-                }
+            default:
+                printf("Don't know what to do with cell of kind `%s`.\n", td_cell_kind_name(cursor.cell->kind));
             }
         }
 
         bool changed = false;
-        for (int col = 0; col < (int)history->cols; ++col) {
-            for (int row = 0; row < (int)history->rows; ++row) {
-                TD_Cell* current_cell = td_cell_at(next_board, col, row);
-                if (current_cell->active) {
-                    changed = true;
-                    break;
-                }
-            }
-            if  (changed) {
+        TD_FOREACH(next_board, cursor) {
+            if (cursor.cell->active) {
+                changed = true;
                 break;
             }
         }
@@ -544,14 +530,45 @@ void td_reset(TD_BoardHistory* history, int input_a, int input_b) {
     history->tick = 0;
 
     TD_Board* board = td_current_board(history);
-    for (size_t x = 0; x < history->cols; ++x) {
-        for (size_t y = 0; y < history->cols; ++y) {
-            TD_Cell* cell = td_cell_at(board, x, y);
-            if (cell->input_kind == CELL_INPUT_A) {
-                cell->value = input_a;
-            } else if (cell->input_kind == CELL_INPUT_B) {
-                cell->value = input_b;
-            }
+    TD_FOREACH(board, cursor) {
+        if (cursor.cell->input_kind == CELL_INPUT_A) {
+            cursor.cell->value = input_a;
+        } else if (cursor.cell->input_kind == CELL_INPUT_B) {
+            cursor.cell->value = input_b;
         }
     }
+}
+
+// Cursor operations
+
+TD_BoardCursor td_cursor_first(TD_Board* board) {
+    if (board->history->cells_bytes > 0) {
+        return (TD_BoardCursor) {
+            .board = board,
+            .col = 0,
+            .row = 0,
+            .cell = td_cell_at(board, 0, 0),
+            .valid = true,
+        };
+    } else {
+        return (TD_BoardCursor) {
+            .valid = false,
+        };
+    }
+}
+
+TD_BoardCursor td_cursor_next(TD_BoardCursor cursor) {
+    cursor.col++;
+    if (cursor.col == (int)cursor.board->history->cols) {
+        cursor.row++;
+        cursor.col = 0;
+
+        if (cursor.row == (int)cursor.board->history->rows) {
+            cursor.valid = false;
+            return cursor;
+        }
+    }
+
+    cursor.cell = td_cell_at(cursor.board, cursor.col, cursor.row);
+    return cursor;
 }
