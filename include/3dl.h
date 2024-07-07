@@ -97,10 +97,8 @@ typedef struct _TD_BoardHistory
 
 typedef struct
 {
-    int tw_row;
-    int tw_col;
-    int row;
-    int col;
+    TD_BoardCursor timewarp_cursor;
+    TD_BoardCursor cell_cursor;
     int value;
     int dt;
 } TD_Timewarp;
@@ -121,13 +119,6 @@ void td_load(TD_BoardHistory* history, const char* board_def, int input_a, int i
 void td_read(TD_BoardHistory* history, const char* filename, int input_a, int input_b);
 void td_free(TD_BoardHistory* history);
 
-// Cell operations
-TD_Cell make_empty_cell();
-TD_Cell make_number_cell(int value);
-TD_Cell* td_cell_at(TD_Board* board, int col, int row);
-void td_set_cell(TD_Board* board, int col, int row, TD_Cell value);
-void td_activate_cell(TD_Board* board, int col, int row);
-
 // History navigation
 TD_Board* td_current_board(TD_BoardHistory* history);
 void td_forward(TD_BoardHistory* history);
@@ -139,5 +130,15 @@ void td_reset(TD_BoardHistory* history, int input_a, int input_b);
 // Cursor operations
 TD_BoardCursor td_cursor_first(TD_Board* board);
 TD_BoardCursor td_cursor_next(TD_BoardCursor cursor);
+
+TD_BoardCursor td_cursor_board(TD_BoardCursor cursor, TD_Board* board);
+
+TD_BoardCursor td_cursor_move(TD_BoardCursor cursor, int cols, int rows);
+#define td_cursor_left(cursor) td_cursor_move(cursor, -1, 0)
+#define td_cursor_right(cursor) td_cursor_move(cursor, 1, 0)
+#define td_cursor_up(cursor) td_cursor_move(cursor, 0, -1)
+#define td_cursor_down(cursor) td_cursor_move(cursor, 0, 1)
+
+bool td_cursor_same(TD_BoardCursor first, TD_BoardCursor second);
 
 #endif // __3DL_H
