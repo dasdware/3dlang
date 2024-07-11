@@ -74,7 +74,12 @@ typedef struct
     DW_RLLayoutAs as;
 } DW_RLLayout;
 
-Rectangle rl_padding(Rectangle bounds, int padding);
+Rectangle rl_padding(Rectangle bounds, int left, int top, int right, int bottom);
+#define rl_padding_all(bounds, padding) rl_padding(bounds, padding, padding, padding, padding)
+#define rl_padding_symmetric(bounds, horizontal, vertical) rl_padding(bounds, horizontal, vertical, horizontal, vertical)
+
+Rectangle rl_center(Rectangle bounds, int width, int height);
+
 void rl_spacing(int amount);
 
 Rectangle rl_rectangle_which(int which);
@@ -95,13 +100,23 @@ void rl_end();
 static DW_RLLayout rl_layout_stack[RLLAYOUT_STACK_CAPACITY] = {0};
 static size_t rl_layout_stack_count = 0;
 
-Rectangle rl_padding(Rectangle bounds, int padding)
+Rectangle rl_padding(Rectangle bounds, int left, int top, int right, int bottom)
 {
     Rectangle result = bounds;
-    result.x += padding;
-    result.y += padding;
-    result.width -= 2 * padding;
-    result.height -= 2 * padding;
+    result.x += left;
+    result.y += top;
+    result.width -= left + right;
+    result.height -= top + bottom;
+    return result;
+}
+
+Rectangle rl_center(Rectangle bounds, int width, int height)
+{
+    Rectangle result = {0};
+    result.x = bounds.x + (bounds.width - width) / 2;
+    result.y = bounds.y + (bounds.height - height) / 2;
+    result.width = width;
+    result.height = height;
     return result;
 }
 
@@ -121,7 +136,7 @@ Rectangle rl_rectangle_which(int which)
             .width = GetScreenWidth(),
             .height = GetScreenHeight(),
         };
-        result = rl_padding(result, layout->as.screen.padding);
+        result = rl_padding_all(result, layout->as.screen.padding);
         break;
     case LAYOUT_ANCHOR:
     {
