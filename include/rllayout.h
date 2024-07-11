@@ -77,7 +77,8 @@ typedef struct
 Rectangle rl_padding(Rectangle bounds, int padding);
 void rl_spacing(int amount);
 
-Rectangle rl_rectangle(int which);
+Rectangle rl_rectangle_which(int which);
+#define rl_rectangle() rl_rectangle_which(WHICH_DEFAULT)
 
 void rl_begin_screen(int padding);
 void rl_begin_anchor(int which, DW_RLLayoutAnchorKind kind, int size, int gap);
@@ -104,7 +105,7 @@ Rectangle rl_padding(Rectangle bounds, int padding)
     return result;
 }
 
-Rectangle rl_rectangle(int which)
+Rectangle rl_rectangle_which(int which)
 {
     NOB_ASSERT(rl_layout_stack_count > 0);
 
@@ -147,7 +148,7 @@ Rectangle rl_rectangle(int which)
                 DW_UNIMPLEMENTED_MSG("Unknown anchor kind `%d`.", layout.as.anchored.kind);
             }
         }
-        else if (which == WHICH_UNANCHORED)
+        else if (which == WHICH_DEFAULT || which == WHICH_UNANCHORED)
         {
             int gap = layout.as.anchored.gap;
             switch (layout.as.anchored.kind)
@@ -257,7 +258,7 @@ void rl_begin_anchor(int which, DW_RLLayoutAnchorKind kind, int size, int gap)
 {
     DW_RLLayout layout = CLITERAL(DW_RLLayout){
         .kind = LAYOUT_ANCHOR,
-        .parent_bounds = rl_rectangle(which),
+        .parent_bounds = rl_rectangle_which(which),
         .as.anchored = {
             .kind = kind,
             .size = size,
@@ -271,7 +272,7 @@ void rl_begin_stack(int which, DW_RLLayoutDirection direction, int item_size, in
 {
     DW_RLLayout layout = CLITERAL(DW_RLLayout){
         .kind = LAYOUT_STACK,
-        .parent_bounds = rl_rectangle(which),
+        .parent_bounds = rl_rectangle_which(which),
         .as.stack = {
             .direction = direction,
             .item_size = item_size,
@@ -287,7 +288,7 @@ void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count, int *
 {
     DW_RLLayout layout = CLITERAL(DW_RLLayout){
         .kind = LAYOUT_SPACED,
-        .parent_bounds = rl_rectangle(which),
+        .parent_bounds = rl_rectangle_which(which),
         .as.spaced = {
             .direction = direction,
             .count = count,
