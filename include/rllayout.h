@@ -16,6 +16,7 @@ typedef enum
     LAYOUT_ANCHOR,
     LAYOUT_STACK,
     LAYOUT_SPACED,
+    LAYOUT_RECTANGLE,
 } DW_RLLayoutKind;
 
 typedef enum
@@ -65,6 +66,7 @@ typedef union
     DW_RLLayoutAnchorData anchored;
     DW_RLLayoutStackData stack;
     DW_RLLayoutSpacedData spaced;
+    Rectangle rectangle;
 } DW_RLLayoutAs;
 
 typedef struct
@@ -89,6 +91,7 @@ void rl_begin_screen(int padding);
 void rl_begin_anchor(int which, DW_RLLayoutAnchorKind kind, int size, int gap);
 void rl_begin_stack(int which, DW_RLLayoutDirection direction, int item_size, int gap);
 void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count);
+void rl_begin_rectangle(int which, Rectangle rectangle);
 void rl_end();
 
 #endif // __DW_RLLAYOUT_H
@@ -242,7 +245,9 @@ Rectangle rl_rectangle_which(int which)
         layout->as.spaced.cursor += which;
         break;
     }
-
+    case LAYOUT_RECTANGLE:
+        result = layout->as.rectangle;
+        break;
     default:
         DW_UNIMPLEMENTED_MSG("Unknown layout kind `%d`.", layout->kind);
     }
@@ -308,7 +313,16 @@ void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count)
         },
     };
     _rl_begin(layout);
-    *layout.as.spaced.cursor = 0;
+}
+
+void rl_begin_rectangle(int which, Rectangle rectangle)
+{
+    DW_RLLayout layout = {
+        .kind = LAYOUT_RECTANGLE,
+        .parent_bounds = rl_rectangle_which(which),
+        .as.rectangle = rectangle,
+    };
+    _rl_begin(layout);
 }
 
 void rl_spacing(int amount)
