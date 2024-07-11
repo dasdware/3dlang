@@ -96,7 +96,7 @@ int main(int argc, char** argv)
                 }
                 rl_end();
 
-                rl_begin_anchor(WHICH_UNANCHORED, ANCHOR_RIGHT, 200, 10);
+                rl_begin_anchor(WHICH_REMAINING, ANCHOR_RIGHT, 200, 10);
                 {
                     // GRID
                     {

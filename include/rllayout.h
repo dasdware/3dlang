@@ -4,8 +4,8 @@
 #define RLLAYOUT_STACK_CAPACITY 32
 
 #define WHICH_DEFAULT 0
-#define WHICH_UNANCHORED 1
-#define WHICH_ANCHORED 2
+#define WHICH_REMAINING -1
+#define WHICH_ANCHORED -2
 
 #include <raylib.h>
 #include <error.h>
@@ -148,7 +148,7 @@ Rectangle rl_rectangle_which(int which)
                 DW_UNIMPLEMENTED_MSG("Unknown anchor kind `%d`.", layout.as.anchored.kind);
             }
         }
-        else if (which == WHICH_DEFAULT || which == WHICH_UNANCHORED)
+        else if (which == WHICH_DEFAULT || which == WHICH_REMAINING)
         {
             int gap = layout.as.anchored.gap;
             switch (layout.as.anchored.kind)
