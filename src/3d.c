@@ -177,16 +177,15 @@ int main(int argc, char** argv)
                         }
                     }
 
-                    int panel_cursor;
-                    rl_begin_stack(WHICH_ANCHORED, DIRECTION_VERTICAL, 30, 0, &panel_cursor);
+                    rl_begin_stack(WHICH_ANCHORED, DIRECTION_VERTICAL, 30, 0);
                     {
                         GuiLabel(rl_rectangle(), td_status_name(current_board->status));
                         GuiLabel(rl_rectangle(), TextFormat("Tick %zu/%zu", history.tick + 1, history.count));
                         GuiLabel(rl_rectangle(), TextFormat("Time %zd", current_board->time));
 
                         rl_spacing(8);
-                        int panel_nav_cursor;
-                        rl_begin_spaced(WHICH_DEFAULT, DIRECTION_HORIZONTAL, 6, &panel_nav_cursor);
+
+                        rl_begin_spaced(WHICH_DEFAULT, DIRECTION_HORIZONTAL, 6);
                         {
                             GuiSetState(history.tick > 0 ? STATE_NORMAL : STATE_DISABLED);
                             if (GuiButton(rl_rectangle_which(1), "<<") || (!guiLocked && IsKeyPressed(KEY_HOME))) {

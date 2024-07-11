@@ -49,14 +49,14 @@ typedef struct
     DW_RLLayoutDirection direction;
     int item_size;
     int gap;
-    int *cursor;
+    int cursor;
 } DW_RLLayoutStackData;
 
 typedef struct
 {
     DW_RLLayoutDirection direction;
     int count;
-    int *cursor;
+    int cursor;
 } DW_RLLayoutSpacedData;
 
 typedef union
@@ -82,8 +82,8 @@ Rectangle rl_rectangle_which(int which);
 
 void rl_begin_screen(int padding);
 void rl_begin_anchor(int which, DW_RLLayoutAnchorKind kind, int size, int gap);
-void rl_begin_stack(int which, DW_RLLayoutDirection direction, int item_size, int gap, int *cursor);
-void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count, int *cursor);
+void rl_begin_stack(int which, DW_RLLayoutDirection direction, int item_size, int gap);
+void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count);
 void rl_end();
 
 #endif // __DW_RLLAYOUT_H
@@ -109,26 +109,26 @@ Rectangle rl_rectangle_which(int which)
 {
     NOB_ASSERT(rl_layout_stack_count > 0);
 
-    DW_RLLayout layout = rl_layout_stack[rl_layout_stack_count - 1];
-    Rectangle result = layout.parent_bounds;
+    DW_RLLayout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
+    Rectangle result = layout->parent_bounds;
 
-    switch (layout.kind)
+    switch (layout->kind)
     {
     case LAYOUT_SCREEN:
-        result = CLITERAL(Rectangle){
+        result = CLITERAL(Rectangle) {
             .x = 0,
             .y = 0,
             .width = GetScreenWidth(),
             .height = GetScreenHeight(),
         };
-        result = rl_padding(result, layout.as.screen.padding);
+        result = rl_padding(result, layout->as.screen.padding);
         break;
     case LAYOUT_ANCHOR:
     {
-        size_t size = layout.as.anchored.size;
+        size_t size = layout->as.anchored.size;
         if (which == WHICH_ANCHORED)
         {
-            switch (layout.as.anchored.kind)
+            switch (layout->as.anchored.kind)
             {
             case ANCHOR_TOP:
                 result.height = size;
@@ -145,13 +145,13 @@ Rectangle rl_rectangle_which(int which)
                 result.width = size;
                 break;
             default:
-                DW_UNIMPLEMENTED_MSG("Unknown anchor kind `%d`.", layout.as.anchored.kind);
+                DW_UNIMPLEMENTED_MSG("Unknown anchor kind `%d`.", layout->as.anchored.kind);
             }
         }
         else if (which == WHICH_DEFAULT || which == WHICH_REMAINING)
         {
-            int gap = layout.as.anchored.gap;
-            switch (layout.as.anchored.kind)
+            int gap = layout->as.anchored.gap;
+            switch (layout->as.anchored.kind)
             {
             case ANCHOR_TOP:
                 result.y += size + gap;
@@ -168,7 +168,7 @@ Rectangle rl_rectangle_which(int which)
                 result.width -= size + gap;
                 break;
             default:
-                DW_UNIMPLEMENTED_MSG("Unknown anchor kind `%d`.", layout.as.anchored.kind);
+                DW_UNIMPLEMENTED_MSG("Unknown anchor kind `%d`.", layout->as.anchored.kind);
             }
         }
         else
@@ -179,34 +179,32 @@ Rectangle rl_rectangle_which(int which)
     }
     case LAYOUT_STACK:
     {
-        int item_size = layout.as.stack.item_size;
-        int *cursor = layout.as.stack.cursor;
+        int item_size = layout->as.stack.item_size;
 
-        switch (layout.as.stack.direction)
+        switch (layout->as.stack.direction)
         {
         case DIRECTION_HORIZONTAL:
-            result.x += *cursor;
+            result.x += layout->as.stack.cursor;
             result.width = item_size;
             break;
         case DIRECTION_VERTICAL:
-            result.y += *cursor;
+            result.y += layout->as.stack.cursor;
             result.height = item_size;
             break;
         default:
-            DW_UNIMPLEMENTED_MSG("Unknown stack direction `%d`.", layout.as.stack.direction);
+            DW_UNIMPLEMENTED_MSG("Unknown stack direction `%d`.", layout->as.stack.direction);
         }
 
-        *cursor += item_size;
+        layout->as.stack.cursor += item_size + layout->as.stack.gap;
         break;
     }
     case LAYOUT_SPACED:
     {
-        int *cursor = layout.as.spaced.cursor;
-        float fract = 1.0 / layout.as.spaced.count;
-        float begin = *cursor * fract;
+        float fract = 1.0 / layout->as.spaced.count;
+        float begin = layout->as.spaced.cursor * fract;
         float size = which * fract;
 
-        switch (layout.as.spaced.direction)
+        switch (layout->as.spaced.direction)
         {
         case DIRECTION_HORIZONTAL:
         {
@@ -223,15 +221,15 @@ Rectangle rl_rectangle_which(int which)
             break;
         }
         default:
-            DW_UNIMPLEMENTED_MSG("Unknown spaced direction `%d`.", layout.as.stack.direction);
+            DW_UNIMPLEMENTED_MSG("Unknown spaced direction `%d`.", layout->as.stack.direction);
         }
 
-        *cursor += which;
+        layout->as.spaced.cursor += which;
         break;
     }
 
     default:
-        DW_UNIMPLEMENTED_MSG("Unknown layout kind `%d`.", layout.kind);
+        DW_UNIMPLEMENTED_MSG("Unknown layout kind `%d`.", layout->kind);
     }
 
     return result;
@@ -246,7 +244,7 @@ void _rl_begin(DW_RLLayout layout)
 
 void rl_begin_screen(int padding)
 {
-    DW_RLLayout layout = CLITERAL(DW_RLLayout){
+    DW_RLLayout layout = {
         .kind = LAYOUT_SCREEN,
         .parent_bounds = {0},
         .as.screen.padding = padding,
@@ -256,7 +254,7 @@ void rl_begin_screen(int padding)
 
 void rl_begin_anchor(int which, DW_RLLayoutAnchorKind kind, int size, int gap)
 {
-    DW_RLLayout layout = CLITERAL(DW_RLLayout){
+    DW_RLLayout layout = {
         .kind = LAYOUT_ANCHOR,
         .parent_bounds = rl_rectangle_which(which),
         .as.anchored = {
@@ -268,31 +266,30 @@ void rl_begin_anchor(int which, DW_RLLayoutAnchorKind kind, int size, int gap)
     _rl_begin(layout);
 }
 
-void rl_begin_stack(int which, DW_RLLayoutDirection direction, int item_size, int gap, int *cursor)
+void rl_begin_stack(int which, DW_RLLayoutDirection direction, int item_size, int gap)
 {
-    DW_RLLayout layout = CLITERAL(DW_RLLayout){
+    DW_RLLayout layout = {
         .kind = LAYOUT_STACK,
         .parent_bounds = rl_rectangle_which(which),
         .as.stack = {
             .direction = direction,
             .item_size = item_size,
             .gap = gap,
-            .cursor = cursor,
+            .cursor = 0,
         },
     };
     _rl_begin(layout);
-    *layout.as.stack.cursor = 0;
 }
 
-void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count, int *cursor)
+void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count)
 {
-    DW_RLLayout layout = CLITERAL(DW_RLLayout){
+    DW_RLLayout layout = {
         .kind = LAYOUT_SPACED,
         .parent_bounds = rl_rectangle_which(which),
         .as.spaced = {
             .direction = direction,
             .count = count,
-            .cursor = cursor,
+            .cursor = 0,
         },
     };
     _rl_begin(layout);
@@ -301,10 +298,10 @@ void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count, int *
 
 void rl_spacing(int amount)
 {
-    DW_RLLayout layout = rl_layout_stack[rl_layout_stack_count - 1];
-    if (layout.kind == LAYOUT_STACK)
+    DW_RLLayout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
+    if (layout->kind == LAYOUT_STACK)
     {
-        *layout.as.stack.cursor += amount;
+        layout->as.stack.cursor += amount;
     }
 }
 
