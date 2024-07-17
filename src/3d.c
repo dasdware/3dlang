@@ -77,11 +77,19 @@ int main(int argc, char** argv)
 
         rl_begin_screen(10);
         {
-            rl_begin_anchor(WHICH_DEFAULT, ANCHOR_TOP, 30, 10);
+            rl_begin_anchor(RLD_DEFAULT, 10);
             {
-                rl_begin_anchor(WHICH_ANCHORED, ANCHOR_RIGHT, 30, 10);
+                rl_begin_stack(RL_ANCHOR_TOP(30), DIRECTION_HORIZONTAL, 30, 10);
                 {
-                    if (GuiTextBox(rl_rectangle(), gui_filename, 1024, gui_active_element == UI_FILENAME)) {
+                    if (GuiButton(rl_opposite(), "#75#") || (!guiLocked && IsKeyPressed(KEY_F5))) {
+                        td_read(&history, gui_filename, gui_input_a, gui_input_b);
+                    }
+
+                    if (GuiButton(rl_opposite(), "#01#") || (!guiLocked && IsKeyPressed(KEY_O))) {
+                        open_dialog_active = true;
+                    }
+
+                    if (GuiTextBox(rl_remaining(), gui_filename, 1024, gui_active_element == UI_FILENAME)) {
                         if (gui_active_element == UI_FILENAME) {
                             gui_active_element = UI_NONE;
                             td_read(&history, gui_filename, gui_input_a, gui_input_b);
@@ -89,18 +97,63 @@ int main(int argc, char** argv)
                             gui_active_element = UI_FILENAME;
                         }
                     }
-
-                    if (GuiButton(rl_rectangle(), "#75#") || IsKeyPressed(KEY_F5)) {
-                        td_read(&history, gui_filename, gui_input_a, gui_input_b);
-                    }
                 }
                 rl_end();
 
-                rl_begin_anchor(WHICH_REMAINING, ANCHOR_RIGHT, 200, 10);
+                rl_begin_anchor(RLD_REMAINING, 10);
                 {
+                    rl_begin_stack(RL_ANCHOR_RIGHT(200), DIRECTION_VERTICAL, 30, 0);
+                    {
+                        GuiLabel(rl_default(), td_status_name(current_board->status));
+                        GuiLabel(rl_default(), TextFormat("Tick %zu/%zu", history.tick + 1, history.count));
+                        GuiLabel(rl_default(), TextFormat("Time %zd", current_board->time));
+
+                        rl_spacing(8);
+
+                        rl_begin_spaced(RLD_DEFAULT, DIRECTION_HORIZONTAL, 6, 5);
+                        {
+                            GuiSetState(history.tick > 0 ? STATE_NORMAL : STATE_DISABLED);
+                            if (GuiButton(rl_rectangle(1), "<<") || (!guiLocked && IsKeyPressed(KEY_HOME))) {
+                                td_rewind(&history);
+                            }
+                            if (GuiButton(rl_rectangle(2), "<") || (!guiLocked && IsKeyPressed(KEY_LEFT))) {
+                                td_back(&history);
+                            }
+
+                            GuiSetState(current_board->status == STATUS_RUNNING ? STATE_NORMAL : STATE_DISABLED);
+                            if (GuiButton(rl_rectangle(2), ">") || (!guiLocked && IsKeyPressed(KEY_RIGHT))) {
+                                td_forward(&history);
+                            }
+                            if (GuiButton(rl_rectangle(1), ">>") || (!guiLocked && IsKeyPressed(KEY_END))) {
+                                td_fast_forward(&history);
+                            }
+                            GuiEnable();
+                        }
+                        rl_end();
+
+                        rl_spacing(8);
+                        GuiLabel(rl_default(), "Input A");
+                        GuiSpinner(rl_default(), NULL, &gui_input_a, INT_MIN, INT_MAX, false);
+
+                        rl_spacing(8);
+                        GuiLabel(rl_default(), "Input B");
+                        GuiSpinner(rl_default(), NULL, &gui_input_b, INT_MIN, INT_MAX, false);
+
+                        rl_spacing(8);
+                        if (GuiButton(rl_default(), "Reset") || (!guiLocked && IsKeyPressed(KEY_R))) {
+                            td_reset(&history, gui_input_a, gui_input_b);
+                        }
+
+                        if (current_board->status == STATUS_STOPPED) {
+                            rl_spacing(8);
+                            GuiLabel(rl_default(), TextFormat("Result: %d", current_board->result));
+                        }
+                    }
+                    rl_end();
+
                     // GRID
                     {
-                        Rectangle grid_bounds = rl_rectangle();
+                        Rectangle grid_bounds = rl_default();
                         int cell_size = min(grid_bounds.width / history.cols, grid_bounds.height / history.rows);
 
                         TD_FOREACH(current_board, cursor) {
@@ -176,55 +229,6 @@ int main(int argc, char** argv)
                                      LIGHTGRAY);
                         }
                     }
-
-                    rl_begin_stack(WHICH_ANCHORED, DIRECTION_VERTICAL, 30, 0);
-                    {
-                        GuiLabel(rl_rectangle(), td_status_name(current_board->status));
-                        GuiLabel(rl_rectangle(), TextFormat("Tick %zu/%zu", history.tick + 1, history.count));
-                        GuiLabel(rl_rectangle(), TextFormat("Time %zd", current_board->time));
-
-                        rl_spacing(8);
-
-                        rl_begin_spaced(WHICH_DEFAULT, DIRECTION_HORIZONTAL, 6);
-                        {
-                            GuiSetState(history.tick > 0 ? STATE_NORMAL : STATE_DISABLED);
-                            if (GuiButton(rl_rectangle_which(1), "<<") || (!guiLocked && IsKeyPressed(KEY_HOME))) {
-                                td_rewind(&history);
-                            }
-                            if (GuiButton(rl_rectangle_which(2), "<") || (!guiLocked && IsKeyPressed(KEY_LEFT))) {
-                                td_back(&history);
-                            }
-
-                            GuiSetState(current_board->status == STATUS_RUNNING ? STATE_NORMAL : STATE_DISABLED);
-                            if (GuiButton(rl_rectangle_which(2), ">") || (!guiLocked && IsKeyPressed(KEY_RIGHT))) {
-                                td_forward(&history);
-                            }
-                            if (GuiButton(rl_rectangle_which(1), ">>") || (!guiLocked && IsKeyPressed(KEY_END))) {
-                                td_fast_forward(&history);
-                            }
-                            GuiEnable();
-                        }
-                        rl_end();
-
-                        rl_spacing(8);
-                        GuiLabel(rl_rectangle(), "Input A");
-                        GuiSpinner(rl_rectangle(), NULL, &gui_input_a, INT_MIN, INT_MAX, false);
-
-                        rl_spacing(8);
-                        GuiLabel(rl_rectangle(), "Input B");
-                        GuiSpinner(rl_rectangle(), NULL, &gui_input_b, INT_MIN, INT_MAX, false);
-
-                        rl_spacing(8);
-                        if (GuiButton(rl_rectangle(), "Reset") || (!guiLocked && IsKeyPressed(KEY_R))) {
-                            td_reset(&history, gui_input_a, gui_input_b);
-                        }
-
-                        if (current_board->status == STATUS_STOPPED) {
-                            rl_spacing(8);
-                            GuiLabel(rl_rectangle(), TextFormat("Result: %d", current_board->result));
-                        }
-                    }
-                    rl_end();
                 }
                 rl_end();
             }

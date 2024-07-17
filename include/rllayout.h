@@ -1,11 +1,45 @@
 #ifndef __DW_RLLAYOUT_H
 #define __DW_RLLAYOUT_H
 
-#define RLLAYOUT_STACK_CAPACITY 32
+#ifndef RLLAYOUT_STACK_CAPACITY
+#   define RLLAYOUT_STACK_CAPACITY 32
+#endif
 
-#define WHICH_DEFAULT 0
-#define WHICH_REMAINING -1
-#define WHICH_ANCHORED -2
+#ifndef RLLAYOUT_SIZE_BITS
+#   define RLLAYOUT_SIZE_BITS 24
+#endif
+
+#define RL_SIZE_MASK ((1 << RLLAYOUT_SIZE_BITS) - 1)
+
+#define RL_SIZE(data) ((data) & RL_SIZE_MASK)
+
+#define RL_FLAG_DEFAULT       (0x00 << RLLAYOUT_SIZE_BITS)
+#define RL_FLAG_ANCHOR_TOP    (0x01 << RLLAYOUT_SIZE_BITS)
+#define RL_FLAG_ANCHOR_LEFT   (0x02 << RLLAYOUT_SIZE_BITS)
+#define RL_FLAG_ANCHOR_BOTTOM (0x03 << RLLAYOUT_SIZE_BITS)
+#define RL_FLAG_ANCHOR_RIGHT  (0x04 << RLLAYOUT_SIZE_BITS)
+#define RL_FLAG_OPPOSITE      (0x05 << RLLAYOUT_SIZE_BITS)
+#define RL_FLAG_REMAINING     (0x06 << RLLAYOUT_SIZE_BITS)
+
+#define RL_DEFAULT(size) (RL_FLAG_DEFAULT | (size))
+#define RL_ANCHOR_TOP(size) (RL_FLAG_ANCHOR_TOP | (size))
+#define RL_ANCHOR_LEFT(size) (RL_FLAG_ANCHOR_LEFT | (size))
+#define RL_ANCHOR_BOTTOM(size) (RL_FLAG_ANCHOR_BOTTOM | (size))
+#define RL_ANCHOR_RIGHT(size) (RL_FLAG_ANCHOR_RIGHT | (size))
+#define RL_OPPOSITE(size) (RL_FLAG_OPPOSITE | (size))
+#define RL_REMAINING(size) (RL_FLAG_REMAINING | (size))
+
+#define RLD_DEFAULT RL_DEFAULT(0)
+#define RLD_OPPOSITE RL_OPPOSITE(0)
+#define RLD_REMAINING RL_REMAINING(0)
+
+#define RL_IS_DEFAULT(data) (((data) & ~RL_SIZE_MASK) == RL_FLAG_DEFAULT)
+#define RL_IS_ANCHOR_TOP(data) (((data) & ~RL_SIZE_MASK) == RL_FLAG_ANCHOR_TOP)
+#define RL_IS_ANCHOR_LEFT(data) (((data) & ~RL_SIZE_MASK) == RL_FLAG_ANCHOR_LEFT)
+#define RL_IS_ANCHOR_BOTTOM(data) (((data) & ~RL_SIZE_MASK) == RL_FLAG_ANCHOR_BOTTOM)
+#define RL_IS_ANCHOR_RIGHT(data) (((data) & ~RL_SIZE_MASK) == RL_FLAG_ANCHOR_RIGHT)
+#define RL_IS_OPPOSITE(data) (((data) & ~RL_SIZE_MASK) == RL_FLAG_OPPOSITE)
+#define RL_IS_REMAINING(data) (((data) & ~RL_SIZE_MASK) == RL_FLAG_REMAINING)
 
 #include <raylib.h>
 #include <error.h>
@@ -21,14 +55,6 @@ typedef enum
 
 typedef enum
 {
-    ANCHOR_TOP,
-    ANCHOR_BOTTOM,
-    ANCHOR_LEFT,
-    ANCHOR_RIGHT,
-} DW_RLLayoutAnchorKind;
-
-typedef enum
-{
     DIRECTION_VERTICAL,
     DIRECTION_HORIZONTAL,
 } DW_RLLayoutDirection;
@@ -40,9 +66,11 @@ typedef struct
 
 typedef struct
 {
-    DW_RLLayoutAnchorKind kind;
-    int size;
     int gap;
+    int inset_left;
+    int inset_top;
+    int inset_right;
+    int inset_bottom;
 } DW_RLLayoutAnchorData;
 
 typedef struct
@@ -50,13 +78,15 @@ typedef struct
     DW_RLLayoutDirection direction;
     int item_size;
     int gap;
-    int cursor;
+    int inset_begin;
+    int inset_end;
 } DW_RLLayoutStackData;
 
 typedef struct
 {
     DW_RLLayoutDirection direction;
     int count;
+    int gap;
     int cursor;
 } DW_RLLayoutSpacedData;
 
@@ -84,14 +114,16 @@ Rectangle rl_center(Rectangle bounds, int width, int height);
 
 void rl_spacing(int amount);
 
-Rectangle rl_rectangle_which(int which);
-#define rl_rectangle() rl_rectangle_which(WHICH_DEFAULT)
+Rectangle rl_rectangle(int data);
+#define rl_default() rl_rectangle(RLD_DEFAULT)
+#define rl_opposite() rl_rectangle(RLD_OPPOSITE)
+#define rl_remaining() rl_rectangle(RLD_REMAINING)
 
 void rl_begin_screen(int padding);
-void rl_begin_anchor(int which, DW_RLLayoutAnchorKind kind, int size, int gap);
-void rl_begin_stack(int which, DW_RLLayoutDirection direction, int item_size, int gap);
-void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count);
-void rl_begin_rectangle(int which, Rectangle rectangle);
+void rl_begin_anchor(int data, int gap);
+void rl_begin_stack(int data, DW_RLLayoutDirection direction, int item_size, int gap);
+void rl_begin_spaced(int data, DW_RLLayoutDirection direction, int count, int gap);
+void rl_begin_rectangle(int data, Rectangle rectangle);
 void rl_end();
 
 #endif // __DW_RLLAYOUT_H
@@ -123,7 +155,7 @@ Rectangle rl_center(Rectangle bounds, int width, int height)
     return result;
 }
 
-Rectangle rl_rectangle_which(int which)
+Rectangle rl_rectangle(int data)
 {
     NOB_ASSERT(rl_layout_stack_count > 0);
 
@@ -143,106 +175,101 @@ Rectangle rl_rectangle_which(int which)
         break;
     case LAYOUT_ANCHOR:
     {
-        size_t size = layout->as.anchored.size;
-        if (which == WHICH_ANCHORED)
-        {
-            switch (layout->as.anchored.kind)
-            {
-            case ANCHOR_TOP:
-                result.height = size;
-                break;
-            case ANCHOR_LEFT:
-                result.height = size;
-                break;
-            case ANCHOR_BOTTOM:
-                result.y += result.height - size;
-                result.height = size;
-                break;
-            case ANCHOR_RIGHT:
-                result.x += result.width - size;
-                result.width = size;
-                break;
-            default:
-                DW_UNIMPLEMENTED_MSG("Unknown anchor kind `%d`.", layout->as.anchored.kind);
-            }
-        }
-        else if (which == WHICH_DEFAULT || which == WHICH_REMAINING)
-        {
-            int gap = layout->as.anchored.gap;
-            switch (layout->as.anchored.kind)
-            {
-            case ANCHOR_TOP:
-                result.y += size + gap;
-                result.height -= size + gap;
-                break;
-            case ANCHOR_LEFT:
-                result.x += size + gap;
-                result.width -= size + gap;
-                break;
-            case ANCHOR_BOTTOM:
-                result.height -= size + gap;
-                break;
-            case ANCHOR_RIGHT:
-                result.width -= size + gap;
-                break;
-            default:
-                DW_UNIMPLEMENTED_MSG("Unknown anchor kind `%d`.", layout->as.anchored.kind);
-            }
-        }
-        else
-        {
-            DW_UNIMPLEMENTED_MSG("Unknown anchor which `%d`.", which);
+        int size = RL_SIZE(data);
+        if (RL_IS_ANCHOR_TOP(data)) {
+            result.y += layout->as.anchored.inset_top;
+            result.height = size;
+            layout->as.anchored.inset_top += size + layout->as.anchored.gap;
+        } else if (RL_IS_ANCHOR_BOTTOM(data)) {
+            result.y += result.height - layout->as.anchored.inset_bottom - size;
+            result.height = size;
+            layout->as.anchored.inset_bottom += size + layout->as.anchored.gap;
+        } else if (RL_IS_ANCHOR_LEFT(data)) {
+            result.x += layout->as.anchored.inset_left;
+            result.width = size;
+            layout->as.anchored.inset_left += size + layout->as.anchored.gap;
+        } else if (RL_IS_ANCHOR_RIGHT(data)) {
+            result.x += result.width - layout->as.anchored.inset_right - size;
+            result.width = size;
+            layout->as.anchored.inset_right += size + layout->as.anchored.gap;
+        } else if (RL_IS_REMAINING(data) || RL_IS_DEFAULT(data)) {
+            result.x += layout->as.anchored.inset_left;
+            result.y += layout->as.anchored.inset_top;
+            result.width -= layout->as.anchored.inset_left + layout->as.anchored.inset_right;
+            result.height -= layout->as.anchored.inset_top + layout->as.anchored.inset_bottom;
+        } else {
+            DW_UNIMPLEMENTED_MSG("Unknown anchor data `%d`.", data);
         }
         break;
     }
     case LAYOUT_STACK:
     {
-        int item_size = layout->as.stack.item_size;
+        int item_size = RL_SIZE(data);
+        if (RL_IS_REMAINING(data)) {
+            if (layout->as.stack.direction == DIRECTION_HORIZONTAL) {
+                item_size = result.width - layout->as.stack.inset_begin - layout->as.stack.inset_end;
+            } else if (layout->as.stack.direction == DIRECTION_VERTICAL) {
+                item_size = result.height - layout->as.stack.inset_begin - layout->as.stack.inset_end;
+            }
+        } else if (item_size == 0) {
+            item_size = layout->as.stack.item_size;
+        }
 
         switch (layout->as.stack.direction)
         {
         case DIRECTION_HORIZONTAL:
-            result.x += layout->as.stack.cursor;
+            if (RL_IS_OPPOSITE(data)) {
+                result.x += result.width - layout->as.stack.inset_end - item_size;
+                layout->as.stack.inset_end += item_size + layout->as.stack.gap;
+            } else {
+                result.x += layout->as.stack.inset_begin;
+                layout->as.stack.inset_begin += item_size + layout->as.stack.gap;
+            }
             result.width = item_size;
             break;
         case DIRECTION_VERTICAL:
-            result.y += layout->as.stack.cursor;
+            if (RL_IS_OPPOSITE(data)) {
+                result.y += result.height - layout->as.stack.inset_end - item_size;
+                layout->as.stack.inset_end += item_size + layout->as.stack.gap;
+            } else {
+                result.y += layout->as.stack.inset_begin;
+                layout->as.stack.inset_begin += item_size + layout->as.stack.gap;
+            }
             result.height = item_size;
             break;
         default:
             DW_UNIMPLEMENTED_MSG("Unknown stack direction `%d`.", layout->as.stack.direction);
         }
 
-        layout->as.stack.cursor += item_size + layout->as.stack.gap;
         break;
     }
     case LAYOUT_SPACED:
     {
-        float fract = 1.0 / layout->as.spaced.count;
-        float begin = layout->as.spaced.cursor * fract;
-        float size = which * fract;
+        size_t count = layout->as.spaced.count;
+        size_t gap = layout->as.spaced.gap;
+        size_t cursor = layout->as.spaced.cursor;
 
         switch (layout->as.spaced.direction)
         {
         case DIRECTION_HORIZONTAL:
         {
-            size_t s = result.width;
-            result.x = result.x + s * begin;
-            result.width = s * size;
+            float cell_size = 1.0 * (result.width - (count - 1) * gap) / count;
+            result.x += cursor * (cell_size + gap);
+            result.width = ceilf(data * cell_size + (data - 1) * gap);
             break;
         }
         case DIRECTION_VERTICAL:
         {
-            size_t s = result.height;
-            result.y = result.y + s * begin;
-            result.height = s * size;
+            float cell_size = 1.0 * (result.height - (count - 1) * gap) / count;
+            result.y += cursor * (cell_size + gap);
+            result.height = ceilf(data * cell_size + (data - 1) * gap);
             break;
         }
         default:
             DW_UNIMPLEMENTED_MSG("Unknown spaced direction `%d`.", layout->as.stack.direction);
         }
 
-        layout->as.spaced.cursor += which;
+        layout->as.spaced.cursor += data;
         break;
     }
     case LAYOUT_RECTANGLE:
@@ -272,54 +299,58 @@ void rl_begin_screen(int padding)
     _rl_begin(layout);
 }
 
-void rl_begin_anchor(int which, DW_RLLayoutAnchorKind kind, int size, int gap)
+void rl_begin_anchor(int data, int gap)
 {
     DW_RLLayout layout = {
         .kind = LAYOUT_ANCHOR,
-        .parent_bounds = rl_rectangle_which(which),
+        .parent_bounds = rl_rectangle(data),
         .as.anchored = {
-            .kind = kind,
-            .size = size,
+            .inset_left = 0,
+            .inset_top = 0,
+            .inset_right = 0,
+            .inset_bottom = 0,
             .gap = gap,
         },
     };
     _rl_begin(layout);
 }
 
-void rl_begin_stack(int which, DW_RLLayoutDirection direction, int item_size, int gap)
+void rl_begin_stack(int data, DW_RLLayoutDirection direction, int item_size, int gap)
 {
     DW_RLLayout layout = {
         .kind = LAYOUT_STACK,
-        .parent_bounds = rl_rectangle_which(which),
+        .parent_bounds = rl_rectangle(data),
         .as.stack = {
             .direction = direction,
             .item_size = item_size,
             .gap = gap,
-            .cursor = 0,
+            .inset_begin = 0,
+            .inset_end = 0,
         },
     };
     _rl_begin(layout);
 }
 
-void rl_begin_spaced(int which, DW_RLLayoutDirection direction, int count)
+void rl_begin_spaced(int data, DW_RLLayoutDirection direction, int count, int gap)
 {
     DW_RLLayout layout = {
         .kind = LAYOUT_SPACED,
-        .parent_bounds = rl_rectangle_which(which),
+        .parent_bounds = rl_rectangle(data),
         .as.spaced = {
             .direction = direction,
             .count = count,
+            .gap = gap,
             .cursor = 0,
         },
     };
     _rl_begin(layout);
 }
 
-void rl_begin_rectangle(int which, Rectangle rectangle)
+void rl_begin_rectangle(int data, Rectangle rectangle)
 {
     DW_RLLayout layout = {
         .kind = LAYOUT_RECTANGLE,
-        .parent_bounds = rl_rectangle_which(which),
+        .parent_bounds = rl_rectangle(data),
         .as.rectangle = rectangle,
     };
     _rl_begin(layout);
@@ -330,7 +361,7 @@ void rl_spacing(int amount)
     DW_RLLayout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
     if (layout->kind == LAYOUT_STACK)
     {
-        layout->as.stack.cursor += amount;
+        layout->as.stack.inset_begin += amount;
     }
 }
 
