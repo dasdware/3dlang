@@ -1,5 +1,5 @@
-#ifndef __DW_RLLAYOUT_H
-#define __DW_RLLAYOUT_H
+#ifndef __RL_LAYOUT_H
+#define __RL_LAYOUT_H
 
 #ifndef RLLAYOUT_STACK_CAPACITY
 #   define RLLAYOUT_STACK_CAPACITY 32
@@ -51,18 +51,18 @@ typedef enum
     LAYOUT_STACK,
     LAYOUT_SPACED,
     LAYOUT_RECTANGLE,
-} DW_RLLayoutKind;
+} RL_LayoutKind;
 
 typedef enum
 {
     DIRECTION_VERTICAL,
     DIRECTION_HORIZONTAL,
-} DW_RLLayoutDirection;
+} RL_LayoutDirection;
 
 typedef struct
 {
     int padding;
-} DW_RLLayoutPaddingData;
+} RL_LayoutPaddingData;
 
 typedef struct
 {
@@ -71,71 +71,71 @@ typedef struct
     int inset_top;
     int inset_right;
     int inset_bottom;
-} DW_RLLayoutAnchorData;
+} RL_LayoutAnchorData;
 
 typedef struct
 {
-    DW_RLLayoutDirection direction;
+    RL_LayoutDirection direction;
     int item_size;
     int gap;
     int inset_begin;
     int inset_end;
-} DW_RLLayoutStackData;
+} RL_LayoutStackData;
 
 typedef struct
 {
-    DW_RLLayoutDirection direction;
+    RL_LayoutDirection direction;
     int count;
     int gap;
     int cursor;
-} DW_RLLayoutSpacedData;
+} RL_LayoutSpacedData;
 
 typedef union
 {
-    DW_RLLayoutPaddingData screen;
-    DW_RLLayoutAnchorData anchored;
-    DW_RLLayoutStackData stack;
-    DW_RLLayoutSpacedData spaced;
+    RL_LayoutPaddingData screen;
+    RL_LayoutAnchorData anchored;
+    RL_LayoutStackData stack;
+    RL_LayoutSpacedData spaced;
     Rectangle rectangle;
-} DW_RLLayoutAs;
+} RL_LayoutAs;
 
 typedef struct
 {
-    DW_RLLayoutKind kind;
+    RL_LayoutKind kind;
     Rectangle parent_bounds;
-    DW_RLLayoutAs as;
-} DW_RLLayout;
+    RL_LayoutAs as;
+} RL_Layout;
 
-Rectangle rl_padding(Rectangle bounds, int left, int top, int right, int bottom);
-#define rl_padding_all(bounds, padding) rl_padding(bounds, padding, padding, padding, padding)
-#define rl_padding_symmetric(bounds, horizontal, vertical) rl_padding(bounds, horizontal, vertical, horizontal, vertical)
+Rectangle LayoutPadding(Rectangle bounds, int left, int top, int right, int bottom);
+#define LayoutPaddingAll(bounds, padding) LayoutPadding(bounds, padding, padding, padding, padding)
+#define LayoutPaddingSymmetric(bounds, horizontal, vertical) LayoutPadding(bounds, horizontal, vertical, horizontal, vertical)
 
-Rectangle rl_center(Rectangle bounds, int width, int height);
+Rectangle LayoutCenter(Rectangle bounds, int width, int height);
 
-void rl_spacing(int amount);
+void LayoutSpacing(int amount);
 
-Rectangle rl_rectangle(int data);
-#define rl_default() rl_rectangle(RLD_DEFAULT)
-#define rl_opposite() rl_rectangle(RLD_OPPOSITE)
-#define rl_remaining() rl_rectangle(RLD_REMAINING)
+Rectangle LayoutRectangle(int data);
+#define LayoutDefault() LayoutRectangle(RLD_DEFAULT)
+#define LayoutOpposite() LayoutRectangle(RLD_OPPOSITE)
+#define LayoutRemaining() LayoutRectangle(RLD_REMAINING)
 
-void rl_begin_screen(int padding);
-void rl_begin_anchor(int data, int gap);
-void rl_begin_stack(int data, DW_RLLayoutDirection direction, int item_size, int gap);
-void rl_begin_spaced(int data, DW_RLLayoutDirection direction, int count, int gap);
-void rl_begin_rectangle(int data, Rectangle rectangle);
-void rl_end();
+void LayoutBeginScreen(int padding);
+void LayoutBeginAnchored(int data, int gap);
+void LayoutBeginStack(int data, RL_LayoutDirection direction, int item_size, int gap);
+void LayoutBeginSpaced(int data, RL_LayoutDirection direction, int count, int gap);
+void LayoutBeginRectangle(int data, Rectangle rectangle);
+void LayoutEnd();
 
-#endif // __DW_RLLAYOUT_H
+#endif // __RL_LAYOUT_H
 
 #ifdef RLLAYOUT_IMPLEMENTATION
 
 #include <nob.h>
 
-static DW_RLLayout rl_layout_stack[RLLAYOUT_STACK_CAPACITY] = {0};
+static RL_Layout rl_layout_stack[RLLAYOUT_STACK_CAPACITY] = {0};
 static size_t rl_layout_stack_count = 0;
 
-Rectangle rl_padding(Rectangle bounds, int left, int top, int right, int bottom)
+Rectangle LayoutPadding(Rectangle bounds, int left, int top, int right, int bottom)
 {
     Rectangle result = bounds;
     result.x += left;
@@ -145,7 +145,7 @@ Rectangle rl_padding(Rectangle bounds, int left, int top, int right, int bottom)
     return result;
 }
 
-Rectangle rl_center(Rectangle bounds, int width, int height)
+Rectangle LayoutCenter(Rectangle bounds, int width, int height)
 {
     Rectangle result = {0};
     result.x = bounds.x + (bounds.width - width) / 2;
@@ -155,11 +155,11 @@ Rectangle rl_center(Rectangle bounds, int width, int height)
     return result;
 }
 
-Rectangle rl_rectangle(int data)
+Rectangle LayoutRectangle(int data)
 {
     NOB_ASSERT(rl_layout_stack_count > 0);
 
-    DW_RLLayout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
+    RL_Layout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
     Rectangle result = layout->parent_bounds;
 
     switch (layout->kind)
@@ -171,7 +171,7 @@ Rectangle rl_rectangle(int data)
             .width = GetScreenWidth(),
             .height = GetScreenHeight(),
         };
-        result = rl_padding_all(result, layout->as.screen.padding);
+        result = LayoutPaddingAll(result, layout->as.screen.padding);
         break;
     case LAYOUT_ANCHOR:
     {
@@ -282,28 +282,28 @@ Rectangle rl_rectangle(int data)
     return result;
 }
 
-void _rl_begin(DW_RLLayout layout)
+void _LayoutBegin(RL_Layout layout)
 {
     NOB_ASSERT(rl_layout_stack_count < RLLAYOUT_STACK_CAPACITY);
     rl_layout_stack[rl_layout_stack_count] = layout;
     ++rl_layout_stack_count;
 }
 
-void rl_begin_screen(int padding)
+void LayoutBeginScreen(int padding)
 {
-    DW_RLLayout layout = {
+    RL_Layout layout = {
         .kind = LAYOUT_SCREEN,
         .parent_bounds = {0},
         .as.screen.padding = padding,
     };
-    _rl_begin(layout);
+    _LayoutBegin(layout);
 }
 
-void rl_begin_anchor(int data, int gap)
+void LayoutBeginAnchored(int data, int gap)
 {
-    DW_RLLayout layout = {
+    RL_Layout layout = {
         .kind = LAYOUT_ANCHOR,
-        .parent_bounds = rl_rectangle(data),
+        .parent_bounds = LayoutRectangle(data),
         .as.anchored = {
             .inset_left = 0,
             .inset_top = 0,
@@ -312,14 +312,14 @@ void rl_begin_anchor(int data, int gap)
             .gap = gap,
         },
     };
-    _rl_begin(layout);
+    _LayoutBegin(layout);
 }
 
-void rl_begin_stack(int data, DW_RLLayoutDirection direction, int item_size, int gap)
+void LayoutBeginStack(int data, RL_LayoutDirection direction, int item_size, int gap)
 {
-    DW_RLLayout layout = {
+    RL_Layout layout = {
         .kind = LAYOUT_STACK,
-        .parent_bounds = rl_rectangle(data),
+        .parent_bounds = LayoutRectangle(data),
         .as.stack = {
             .direction = direction,
             .item_size = item_size,
@@ -328,14 +328,14 @@ void rl_begin_stack(int data, DW_RLLayoutDirection direction, int item_size, int
             .inset_end = 0,
         },
     };
-    _rl_begin(layout);
+    _LayoutBegin(layout);
 }
 
-void rl_begin_spaced(int data, DW_RLLayoutDirection direction, int count, int gap)
+void LayoutBeginSpaced(int data, RL_LayoutDirection direction, int count, int gap)
 {
-    DW_RLLayout layout = {
+    RL_Layout layout = {
         .kind = LAYOUT_SPACED,
-        .parent_bounds = rl_rectangle(data),
+        .parent_bounds = LayoutRectangle(data),
         .as.spaced = {
             .direction = direction,
             .count = count,
@@ -343,29 +343,29 @@ void rl_begin_spaced(int data, DW_RLLayoutDirection direction, int count, int ga
             .cursor = 0,
         },
     };
-    _rl_begin(layout);
+    _LayoutBegin(layout);
 }
 
-void rl_begin_rectangle(int data, Rectangle rectangle)
+void LayoutBeginRectangle(int data, Rectangle rectangle)
 {
-    DW_RLLayout layout = {
+    RL_Layout layout = {
         .kind = LAYOUT_RECTANGLE,
-        .parent_bounds = rl_rectangle(data),
+        .parent_bounds = LayoutRectangle(data),
         .as.rectangle = rectangle,
     };
-    _rl_begin(layout);
+    _LayoutBegin(layout);
 }
 
-void rl_spacing(int amount)
+void LayoutSpacing(int amount)
 {
-    DW_RLLayout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
+    RL_Layout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
     if (layout->kind == LAYOUT_STACK)
     {
         layout->as.stack.inset_begin += amount;
     }
 }
 
-void rl_end()
+void LayoutEnd()
 {
     NOB_ASSERT(rl_layout_stack_count > 0);
     rl_layout_stack_count--;

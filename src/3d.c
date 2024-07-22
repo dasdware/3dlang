@@ -67,7 +67,7 @@ int main(int argc, char** argv)
     char gui_filename[1024];
     strncpy(gui_filename, filename, 1024);
 
-    static UI_Element gui_active_element = UI_NONE;
+    UI_Element gui_active_element = UI_NONE;
 
     while (!WindowShouldClose()) {
         TD_Board* current_board = td_current_board(&history);
@@ -75,21 +75,21 @@ int main(int argc, char** argv)
         BeginDrawing();
         ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
 
-        rl_begin_screen(10);
+        LayoutBeginScreen(10);
         {
-            rl_begin_anchor(RLD_DEFAULT, 10);
+            LayoutBeginAnchored(RLD_DEFAULT, 10);
             {
-                rl_begin_stack(RL_ANCHOR_TOP(30), DIRECTION_HORIZONTAL, 30, 10);
+                LayoutBeginStack(RL_ANCHOR_TOP(30), DIRECTION_HORIZONTAL, 30, 10);
                 {
-                    if (GuiButton(rl_opposite(), "#75#") || (!guiLocked && IsKeyPressed(KEY_F5))) {
+                    if (GuiButton(LayoutOpposite(), "#75#") || (!guiLocked && IsKeyPressed(KEY_F5))) {
                         td_read(&history, gui_filename, gui_input_a, gui_input_b);
                     }
 
-                    if (GuiButton(rl_opposite(), "#01#") || (!guiLocked && IsKeyPressed(KEY_O))) {
+                    if (GuiButton(LayoutOpposite(), "#01#") || (!guiLocked && IsKeyPressed(KEY_O))) {
                         open_dialog_active = true;
                     }
 
-                    if (GuiTextBox(rl_remaining(), gui_filename, 1024, gui_active_element == UI_FILENAME)) {
+                    if (GuiTextBox(LayoutRemaining(), gui_filename, 1024, gui_active_element == UI_FILENAME)) {
                         if (gui_active_element == UI_FILENAME) {
                             gui_active_element = UI_NONE;
                             td_read(&history, gui_filename, gui_input_a, gui_input_b);
@@ -98,62 +98,62 @@ int main(int argc, char** argv)
                         }
                     }
                 }
-                rl_end();
+                LayoutEnd();
 
-                rl_begin_anchor(RLD_REMAINING, 10);
+                LayoutBeginAnchored(RLD_REMAINING, 10);
                 {
-                    rl_begin_stack(RL_ANCHOR_RIGHT(200), DIRECTION_VERTICAL, 30, 0);
+                    LayoutBeginStack(RL_ANCHOR_RIGHT(200), DIRECTION_VERTICAL, 30, 0);
                     {
-                        GuiLabel(rl_default(), td_status_name(current_board->status));
-                        GuiLabel(rl_default(), TextFormat("Tick %zu/%zu", history.tick + 1, history.count));
-                        GuiLabel(rl_default(), TextFormat("Time %zd", current_board->time));
+                        GuiLabel(LayoutDefault(), td_status_name(current_board->status));
+                        GuiLabel(LayoutDefault(), TextFormat("Tick %zu/%zu", history.tick + 1, history.count));
+                        GuiLabel(LayoutDefault(), TextFormat("Time %zd", current_board->time));
 
-                        rl_spacing(8);
+                        LayoutSpacing(8);
 
-                        rl_begin_spaced(RLD_DEFAULT, DIRECTION_HORIZONTAL, 6, 5);
+                        LayoutBeginSpaced(RLD_DEFAULT, DIRECTION_HORIZONTAL, 6, 5);
                         {
                             GuiSetState(history.tick > 0 ? STATE_NORMAL : STATE_DISABLED);
-                            if (GuiButton(rl_rectangle(1), "<<") || (!guiLocked && IsKeyPressed(KEY_HOME))) {
+                            if (GuiButton(LayoutRectangle(1), "<<") || (!guiLocked && IsKeyPressed(KEY_HOME))) {
                                 td_rewind(&history);
                             }
-                            if (GuiButton(rl_rectangle(2), "<") || (!guiLocked && IsKeyPressed(KEY_LEFT))) {
+                            if (GuiButton(LayoutRectangle(2), "<") || (!guiLocked && IsKeyPressed(KEY_LEFT))) {
                                 td_back(&history);
                             }
 
                             GuiSetState(current_board->status == STATUS_RUNNING ? STATE_NORMAL : STATE_DISABLED);
-                            if (GuiButton(rl_rectangle(2), ">") || (!guiLocked && IsKeyPressed(KEY_RIGHT))) {
+                            if (GuiButton(LayoutRectangle(2), ">") || (!guiLocked && IsKeyPressed(KEY_RIGHT))) {
                                 td_forward(&history);
                             }
-                            if (GuiButton(rl_rectangle(1), ">>") || (!guiLocked && IsKeyPressed(KEY_END))) {
+                            if (GuiButton(LayoutRectangle(1), ">>") || (!guiLocked && IsKeyPressed(KEY_END))) {
                                 td_fast_forward(&history);
                             }
                             GuiEnable();
                         }
-                        rl_end();
+                        LayoutEnd();
 
-                        rl_spacing(8);
-                        GuiLabel(rl_default(), "Input A");
-                        GuiSpinner(rl_default(), NULL, &gui_input_a, INT_MIN, INT_MAX, false);
+                        LayoutSpacing(8);
+                        GuiLabel(LayoutDefault(), "Input A");
+                        GuiSpinner(LayoutDefault(), NULL, &gui_input_a, INT_MIN, INT_MAX, false);
 
-                        rl_spacing(8);
-                        GuiLabel(rl_default(), "Input B");
-                        GuiSpinner(rl_default(), NULL, &gui_input_b, INT_MIN, INT_MAX, false);
+                        LayoutSpacing(8);
+                        GuiLabel(LayoutDefault(), "Input B");
+                        GuiSpinner(LayoutDefault(), NULL, &gui_input_b, INT_MIN, INT_MAX, false);
 
-                        rl_spacing(8);
-                        if (GuiButton(rl_default(), "Reset") || (!guiLocked && IsKeyPressed(KEY_R))) {
+                        LayoutSpacing(8);
+                        if (GuiButton(LayoutDefault(), "Reset") || (!guiLocked && IsKeyPressed(KEY_R))) {
                             td_reset(&history, gui_input_a, gui_input_b);
                         }
 
                         if (current_board->status == STATUS_STOPPED) {
-                            rl_spacing(8);
-                            GuiLabel(rl_default(), TextFormat("Result: %d", current_board->result));
+                            LayoutSpacing(8);
+                            GuiLabel(LayoutDefault(), TextFormat("Result: %d", current_board->result));
                         }
                     }
-                    rl_end();
+                    LayoutEnd();
 
                     // GRID
                     {
-                        Rectangle grid_bounds = rl_default();
+                        Rectangle grid_bounds = LayoutDefault();
                         int cell_size = min(grid_bounds.width / history.cols, grid_bounds.height / history.rows);
 
                         TD_FOREACH(current_board, cursor) {
@@ -230,11 +230,11 @@ int main(int argc, char** argv)
                         }
                     }
                 }
-                rl_end();
+                LayoutEnd();
             }
-            rl_end();
+            LayoutEnd();
         }
-        rl_end();
+        LayoutEnd();
 
         EndDrawing();
     }
