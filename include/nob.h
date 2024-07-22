@@ -101,6 +101,7 @@ bool nob_copy_directory_recursively(const char *src_path, const char *dst_path);
 bool nob_read_entire_dir(const char *parent, Nob_File_Paths *children);
 bool nob_write_entire_file(const char *path, const void *data, size_t size);
 Nob_File_Type nob_get_file_type(const char *path);
+bool nob_realpath(const char* filename, char* real_filename, size_t size);
 
 #define nob_return_defer(value) do { result = (value); goto defer; } while(0)
 
@@ -480,6 +481,16 @@ defer:
     close(src_fd);
     close(dst_fd);
     return result;
+#endif
+}
+
+bool nob_realpath(const char* filename, char* real_filename, size_t size)
+{
+#ifdef _WIN32
+    return GetFullPathName(filename, size, real_filename, NULL);
+#else
+    NOB_ASSERT(size >= PATH_MAX);
+    return realpath(filename, real_filename) !== NULL;
 #endif
 }
 

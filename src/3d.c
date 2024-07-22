@@ -4,6 +4,8 @@
 #include <error.h>
 #include <3dl.h>
 
+#define RL_DIALOG_IMPLEMENTATION
+#include <rldialog.h>
 
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
@@ -56,7 +58,7 @@ int main(int argc, char** argv)
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_ALWAYS_RUN);
 
-    InitWindow(16*90, 9*90, "d3IDE");
+    InitWindow(16*90, 9*90, "3dIDE");
 
     SetTargetFPS(60);
 
@@ -69,11 +71,17 @@ int main(int argc, char** argv)
 
     UI_Element gui_active_element = UI_NONE;
 
+    RL_FileDialog open_dialog = {0};
+    GuiFileDialogInit(&open_dialog, "Open 3dl Program", filename, ".3dl");
+
+    SetExitKey(0);
+
     while (!WindowShouldClose()) {
         TD_Board* current_board = td_current_board(&history);
 
         BeginDrawing();
         ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
+        GuiFileDialogCheck(&open_dialog);
 
         LayoutBeginScreen(10);
         {
@@ -86,7 +94,7 @@ int main(int argc, char** argv)
                     }
 
                     if (GuiButton(LayoutOpposite(), "#01#") || (!guiLocked && IsKeyPressed(KEY_O))) {
-                        open_dialog_active = true;
+                        GuiFileDialogOpen(&open_dialog);
                     }
 
                     if (GuiTextBox(LayoutRemaining(), gui_filename, 1024, gui_active_element == UI_FILENAME)) {
@@ -236,9 +244,17 @@ int main(int argc, char** argv)
         }
         LayoutEnd();
 
+        if (GuiFileDialog(&open_dialog)) {
+            const char* filename = GuiFileDialogFileName(&open_dialog);
+            td_read(&history, filename, gui_input_a, gui_input_b);
+            strncpy(gui_filename, filename, 1024);
+        }
+
         EndDrawing();
     }
 
     CloseWindow();
+    GuiFileDialogFree(&open_dialog);
+
     return 0;
 }
