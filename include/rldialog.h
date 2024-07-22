@@ -2,7 +2,8 @@
 #define __RL_DIALOG_H
 
 #define RL_DIALOG_PATH_CAPACITY 1024
-#define RL_DIALIG_FILENAME_CAPACITY 261
+#define RL_DIALOG_FILENAME_CAPACITY 261
+#define RL_DIALOG_MOVE_COOLDOWN 0.075f
 
 #include <arena.h>
 #include <raylib.h>
@@ -30,7 +31,7 @@ typedef enum
 typedef struct
 {
     RL_FileListItemKind kind;
-    char name[RL_DIALIG_FILENAME_CAPACITY];
+    char name[RL_DIALOG_FILENAME_CAPACITY];
 } RL_FileListItem;
 
 typedef struct
@@ -54,6 +55,8 @@ typedef struct
     Vector2 files_scroll;
     int files_index;
     bool selected_file_exists;
+
+    double last_move_time;
 
     char *selected_directory;
     char *editing_directory;
@@ -227,6 +230,8 @@ void GuiFileDialogInit(RL_FileDialog *dialog, const char *title, const char *fil
 
     strcpy_s(dialog->editing_directory, 1024, dialog->selected_directory);
     strcpy_s(dialog->editing_filename, 1024, dialog->selected_filename);
+
+    dialog->last_move_time = 0;
 
     _GuiFileDialogReadFiles(dialog);
 }
@@ -482,15 +487,31 @@ int GuiFileDialog(RL_FileDialog *dialog)
 
                     if (RLFD_UI_FILES == dialog->active_ui)
                     {
-                        if (IsKeyPressed(KEY_UP) && dialog->files_index > 0)
+                        if (IsKeyDown(KEY_UP) && dialog->files_index > 0)
                         {
-                            dialog->files_index--;
-                            _GuiFileDialogUpdateFileNames(dialog);
+                            double now = GetTime();
+                            if (now - dialog->last_move_time >= RL_DIALOG_MOVE_COOLDOWN) {
+                                dialog->files_index--;
+                                _GuiFileDialogUpdateFileNames(dialog);
+                                dialog->last_move_time = now;
+                            }
                         }
-                        else if (IsKeyPressed(KEY_DOWN) && dialog->files_index < (int)dialog->files.count - 1)
+                        else if (IsKeyDown(KEY_DOWN) && dialog->files_index < (int)dialog->files.count - 1)
                         {
-                            dialog->files_index++;
-                            _GuiFileDialogUpdateFileNames(dialog);
+                            double now = GetTime();
+                            if (now - dialog->last_move_time >= RL_DIALOG_MOVE_COOLDOWN) {
+                                dialog->files_index++;
+                                _GuiFileDialogUpdateFileNames(dialog);
+                                dialog->last_move_time = now;
+                            }
+                        }
+
+                        if (IsKeyUp(KEY_DOWN) && IsKeyUp(KEY_UP)) {
+                            dialog->last_move_time = 0;
+                        }
+
+                        if (IsKeyPressed(KEY_BACKSPACE)) {
+                            _GuiFileDialogGotoParentDirectory(dialog);
                         }
 
                         GuiSetState(STATE_NORMAL);
