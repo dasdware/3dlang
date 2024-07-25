@@ -221,6 +221,18 @@ int _GuiFileDialogButton(RL_FileDialog *dialog, RL_FileDialogUI id, Rectangle bo
     return result;
 }
 
+void _GuiFileDialogCheckSelectedItemBounds(RL_FileDialog *dialog, Rectangle view, int listItemHeight) {
+    float item_top = dialog->files_scroll.y + dialog->files_index * listItemHeight;
+    if (item_top < 0) {
+        dialog->files_scroll.y -= item_top;
+    } else {
+        float item_bottom = dialog->files_scroll.y + (dialog->files_index + 1) * listItemHeight - 1;
+        if (item_bottom > view.height) {
+            dialog->files_scroll.y -= item_bottom - view.height;
+        }
+    }
+}
+
 void GuiFileDialogInit(RL_FileDialog *dialog, const char *title, const char *filename, const char *filter)
 {
     dialog->title = title;
@@ -403,19 +415,25 @@ int GuiFileDialog(RL_FileDialog *dialog)
                     int listItemIconSize = 16;
                     int listItemIconVOffset = (listItemHeight - listItemIconSize) / 2;
 
-                    Rectangle files_bounds = {0, 0, INT_MAX, listItemHeight * dialog->files.count};
+                    Rectangle list_bounds = LayoutRemaining();
+                    Rectangle files_bounds = {0, 0, list_bounds.width - 2 * GuiGetStyle(DEFAULT, BORDER_WIDTH), listItemHeight * dialog->files.count};
+                    if (files_bounds.height > list_bounds.height - 2 * GuiGetStyle(DEFAULT, BORDER_WIDTH)) {
+                        files_bounds.width -= GuiGetStyle(LISTVIEW, SCROLLBAR_WIDTH);
+                    }
 
                     Rectangle view;
-                    GuiScrollPanel(LayoutRemaining(), NULL, files_bounds, &dialog->files_scroll, &view);
+                    GuiScrollPanel(list_bounds, NULL, files_bounds, &dialog->files_scroll, &view);
 
                     BeginScissorMode(view.x, view.y, view.width, view.height);
 
                     for (size_t i = 0; i < dialog->files.count; ++i)
                     {
                         RL_FileListItem item = dialog->files.items[i];
-                        Rectangle file_bounds = {view.x, view.y + dialog->files_scroll.y + i * listItemHeight, view.width, listItemHeight};
+                        Rectangle file_bounds = {view.x, view.y + dialog->files_scroll.y + i * listItemHeight, view.width, listItemHeight - 1};
                         if (CheckCollisionRecs(file_bounds, view))
                         {
+                            bool hovering = CheckCollisionPointRec(GetMousePosition(), file_bounds)
+                                            && CheckCollisionPointRec(GetMousePosition(), view);
                             if ((int)i == dialog->files_index)
                             {
                                 if (GuiGetState() == STATE_FOCUSED)
@@ -429,18 +447,19 @@ int GuiFileDialog(RL_FileDialog *dialog)
                                     DrawRectangleLinesEx(file_bounds, GuiGetStyle(TEXTBOX, BORDER_WIDTH), GetColor(GuiGetStyle(TEXTBOX, BORDER_COLOR_NORMAL)));
                                 }
                             }
-                            else if (CheckCollisionPointRec(GetMousePosition(), file_bounds))
+                            else if (hovering)
                             {
                                 DrawRectangleRec(file_bounds, GetColor(GuiGetStyle(TEXTBOX, BASE_COLOR_DISABLED)));
                             }
 
-                            if (CheckCollisionPointRec(GetMousePosition(), file_bounds))
+                            if (hovering)
                             {
                                 if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
                                 {
                                     dialog->active_ui = RLFD_UI_FILES;
                                     dialog->files_index = (int)i;
                                     _GuiFileDialogUpdateFileNames(dialog);
+                                    _GuiFileDialogCheckSelectedItemBounds(dialog, view, listItemHeight);
                                 }
 
                                 if (GetGestureDetected() == GESTURE_DOUBLETAP)
@@ -517,11 +536,13 @@ int GuiFileDialog(RL_FileDialog *dialog)
                         {
                             dialog->files_index--;
                             _GuiFileDialogUpdateFileNames(dialog);
+                            _GuiFileDialogCheckSelectedItemBounds(dialog, view, listItemHeight);
                         }
                         else if (_GuiFileDialogKeyCooldown(KEY_DOWN, &dialog->key_down_state) && dialog->files_index < (int)dialog->files.count - 1)
                         {
                             dialog->files_index++;
                             _GuiFileDialogUpdateFileNames(dialog);
+                            _GuiFileDialogCheckSelectedItemBounds(dialog, view, listItemHeight);
                         }
                         else if (IsKeyPressed(KEY_BACKSPACE))
                         {
