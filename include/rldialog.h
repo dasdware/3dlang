@@ -171,6 +171,8 @@ void _GuiFileDialogReadFiles(RL_FileDialog *dialog)
     closedir(dir);
 
     _GuiFileDialogCheckSelectedFile(dialog);
+
+    dialog->files_scroll.y = 0.f;
 }
 
 void _GuiFileDialogGotoParentDirectory(RL_FileDialog *dialog)
