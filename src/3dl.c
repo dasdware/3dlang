@@ -174,6 +174,8 @@ void td_load(TD_BoardHistory* history, const char* board_def, int input_a, int i
     memcpy(first_board.cells, all_cells.items, history->cells_bytes);
 
     nob_da_append(history, first_board);
+
+    history->loaded = true;
 }
 
 void td_read(TD_BoardHistory* history, const char* filename, int input_a, int input_b) {

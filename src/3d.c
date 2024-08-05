@@ -38,6 +38,59 @@ typedef struct {
     char gui_filename[1024];
 } UI_State;
 
+bool GuiIsKeyPressed(int key) {
+    return !GuiIsLocked() && IsKeyPressed(key);
+}
+
+void LayoutLabel(const char* text)
+{
+    int s = GetTextWidth(text);
+    GuiLabel(LayoutRectangle(RL_DEFAULT(s)), text);
+}
+
+void LayoutButtonLabel(const char* text)
+{
+    int s = GetTextWidth(text);
+    Rectangle bounds = LayoutRectangle(RL_DEFAULT(s + 2*5+1));
+    DrawRectangleRounded(bounds, 0.4, 20, GetColor(GuiGetStyle(BUTTON, BASE_COLOR_NORMAL)));
+    DrawRectangleRoundedLines(LayoutPaddingAll(bounds, 2), 0.4, 20, 2, GetColor(GuiGetStyle(BUTTON, BORDER_COLOR_NORMAL)));
+    GuiLabel(LayoutPaddingSymmetric(bounds, 5, 0), text);
+}
+
+void initial_screen(UI_State *state) {
+    LayoutBeginScreen(0);
+    {
+        LayoutBeginRectangle(RLD_DEFAULT, LayoutCenter(LayoutDefault(), 430, 70));
+        {
+            LayoutBeginStack(RLD_DEFAULT, DIRECTION_VERTICAL, 30, 10);
+            {
+                LayoutBeginStack(RLD_DEFAULT, DIRECTION_HORIZONTAL, 30, 10);
+                {
+                    LayoutLabel("Press");
+                    LayoutButtonLabel("N");
+                    LayoutLabel("to create a new empty 3D program.");
+                }
+                LayoutEnd();
+
+                LayoutBeginStack(RLD_DEFAULT, DIRECTION_HORIZONTAL, 30, 10);
+                {
+                    LayoutLabel("Press");
+                    LayoutButtonLabel("O");
+                    LayoutLabel("to open an existing 3D program file.");
+                }
+                LayoutEnd();
+
+            }
+            LayoutEnd();
+        }
+        LayoutEnd();
+    }
+    LayoutEnd();
+    if (GuiIsKeyPressed(KEY_O)) {
+        GuiFileDialogOpen(&state->open_dialog);
+    }
+}
+
 void run_screen(UI_State *state) {
     static const char* symbols[] = { ".", "N", "<", ">", "^", "v", "+", "-", "/", "*", "%", "=", "#", "@", "S" };
     static UI_Element gui_active_element = UI_NONE;
@@ -50,11 +103,11 @@ void run_screen(UI_State *state) {
         {
             LayoutBeginStack(RL_ANCHOR_TOP(30), DIRECTION_HORIZONTAL, 30, 10);
             {
-                if (GuiButton(LayoutOpposite(), "#75#") || (!guiLocked && IsKeyPressed(KEY_F5))) {
+                if (GuiButton(LayoutOpposite(), "#75#") || GuiIsKeyPressed(KEY_F5)) {
                     td_read(&state->history, state->gui_filename, state->gui_input_a, state->gui_input_b);
                 }
 
-                if (GuiButton(LayoutOpposite(), "#01#") || (!guiLocked && IsKeyPressed(KEY_O))) {
+                if (GuiButton(LayoutOpposite(), "#01#") || GuiIsKeyPressed(KEY_O)) {
                     GuiFileDialogOpen(&state->open_dialog);
                 }
 
@@ -82,18 +135,18 @@ void run_screen(UI_State *state) {
                     LayoutBeginSpaced(RLD_DEFAULT, DIRECTION_HORIZONTAL, 6, 5);
                     {
                         GuiSetState(state->history.tick > 0 ? STATE_NORMAL : STATE_DISABLED);
-                        if (GuiButton(LayoutRectangle(1), "<<") || (!guiLocked && IsKeyPressed(KEY_HOME))) {
+                        if (GuiButton(LayoutRectangle(1), "<<") || GuiIsKeyPressed(KEY_HOME)) {
                             td_rewind(&state->history);
                         }
-                        if (GuiButton(LayoutRectangle(2), "<") || (!guiLocked && IsKeyPressed(KEY_LEFT))) {
+                        if (GuiButton(LayoutRectangle(2), "<") || GuiIsKeyPressed(KEY_LEFT)) {
                             td_back(&state->history);
                         }
 
                         GuiSetState(current_board->status == STATUS_RUNNING ? STATE_NORMAL : STATE_DISABLED);
-                        if (GuiButton(LayoutRectangle(2), ">") || (!guiLocked && IsKeyPressed(KEY_RIGHT))) {
+                        if (GuiButton(LayoutRectangle(2), ">") || GuiIsKeyPressed(KEY_RIGHT)) {
                             td_forward(&state->history);
                         }
-                        if (GuiButton(LayoutRectangle(1), ">>") || (!guiLocked && IsKeyPressed(KEY_END))) {
+                        if (GuiButton(LayoutRectangle(1), ">>") || GuiIsKeyPressed(KEY_END)) {
                             td_fast_forward(&state->history);
                         }
                         GuiEnable();
@@ -109,7 +162,7 @@ void run_screen(UI_State *state) {
                     GuiSpinner(LayoutDefault(), NULL, &state->gui_input_b, INT_MIN, INT_MAX, false);
 
                     LayoutSpacing(8);
-                    if (GuiButton(LayoutDefault(), "Reset") || (!guiLocked && IsKeyPressed(KEY_R))) {
+                    if (GuiButton(LayoutDefault(), "Reset") || GuiIsKeyPressed(KEY_R)) {
                         td_reset(&state->history, state->gui_input_a, state->gui_input_b);
                     }
 
@@ -208,29 +261,28 @@ void run_screen(UI_State *state) {
 
 int main(int argc, char** argv)
 {
-    const char* program = nob_shift_args(&argc, &argv);
-    if (argc < 1) {
-        nob_log(NOB_ERROR, "Usage: %s filename [input a] [input b]", program);
-        exit(1);
-    }
-
-    const char* filename = nob_shift_args(&argc, &argv);
-
-    int input_a = 0;
-    if (argc > 0) {
-        input_a = atoi(nob_shift_args(&argc, &argv));
-    }
-
-    int input_b = 0;
-    if (argc > 0) {
-        input_b = atoi(nob_shift_args(&argc, &argv));
-    }
-
     UI_State state = {0};
-    td_read(&state.history, filename, input_a, input_b);
-    state.gui_input_a = state.history.input_a;
-    state.gui_input_b = state.history.input_b;
-    strncpy(state.gui_filename, filename, 1024);
+    GuiFileDialogInit(&state.open_dialog, "Open 3dl Program", "./examples", ".3dl");
+    /*const char* program =*/ nob_shift_args(&argc, &argv);
+    if (argc >= 1) {
+        const char* filename = nob_shift_args(&argc, &argv);
+
+        int input_a = 0;
+        if (argc > 0) {
+            input_a = atoi(nob_shift_args(&argc, &argv));
+        }
+
+        int input_b = 0;
+        if (argc > 0) {
+            input_b = atoi(nob_shift_args(&argc, &argv));
+        }
+
+        td_read(&state.history, filename, input_a, input_b);
+
+        state.gui_input_a = state.history.input_a;
+        state.gui_input_b = state.history.input_b;
+        strncpy(state.gui_filename, filename, 1024);
+    }
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_ALWAYS_RUN);
     InitWindow(16*90, 9*90, "3dIDE");
@@ -238,14 +290,16 @@ int main(int argc, char** argv)
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
     SetExitKey(0);
 
-    GuiFileDialogInit(&state.open_dialog, "Open 3dl Program", filename, ".3dl");
-
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
         GuiFileDialogCheck(&state.open_dialog);
 
-        run_screen(&state);
+        if (!state.history.loaded) {
+            initial_screen(&state);
+        } else {
+            run_screen(&state);
+        }
 
         if (GuiFileDialog(&state.open_dialog)) {
             const char* filename = GuiFileDialogFileName(&state.open_dialog);

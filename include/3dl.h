@@ -92,6 +92,8 @@ typedef struct _TD_BoardHistory
     int input_a;
     int input_b;
 
+    bool loaded;
+
     Arena cells_arena;
 } TD_BoardHistory;
 
