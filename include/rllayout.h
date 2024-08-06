@@ -126,6 +126,10 @@ void LayoutBeginSpaced(int data, RL_LayoutDirection direction, int count, int ga
 void LayoutBeginRectangle(int data, Rectangle rectangle);
 void LayoutEnd();
 
+// Controls/Helpers
+void LayoutGuiButtonLabel(const char* text);
+void LayoutGuiLabel(const char* text);
+
 #endif // __RL_LAYOUT_H
 
 #ifdef RLLAYOUT_IMPLEMENTATION
@@ -369,6 +373,39 @@ void LayoutEnd()
 {
     NOB_ASSERT(rl_layout_stack_count > 0);
     rl_layout_stack_count--;
+}
+
+void LayoutGuiLabel(const char* text)
+{
+    RL_Layout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
+    Rectangle bounds = {0};
+    if (layout->kind == LAYOUT_STACK && layout->as.stack.direction == DIRECTION_HORIZONTAL) {
+        bounds = LayoutRectangle(RL_DEFAULT(GetTextWidth(text)));
+    } else if (layout->kind == LAYOUT_STACK && layout->as.stack.direction == DIRECTION_VERTICAL) {
+        bounds = LayoutRectangle(RL_DEFAULT(GuiGetStyle(DEFAULT, TEXT_SIZE)));
+    } else {
+        bounds = LayoutDefault();
+    }
+    GuiLabel(bounds, text);
+}
+
+#define _BUTTON_LABEL_PADDING 7
+
+void LayoutGuiButtonLabel(const char* text)
+{
+    RL_Layout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
+    Rectangle bounds = {0};
+    if (layout->kind == LAYOUT_STACK && layout->as.stack.direction == DIRECTION_HORIZONTAL) {
+        bounds = LayoutRectangle(RL_DEFAULT(GetTextWidth(text) + 2*_BUTTON_LABEL_PADDING+1));
+    } else if (layout->kind == LAYOUT_STACK && layout->as.stack.direction == DIRECTION_VERTICAL) {
+        bounds = LayoutRectangle(RL_DEFAULT(GuiGetStyle(DEFAULT, TEXT_SIZE) + 2*_BUTTON_LABEL_PADDING+1));
+    } else {
+        bounds = LayoutDefault();
+    }
+
+    DrawRectangleRounded(bounds, 0.4, 20, GetColor(GuiGetStyle(BUTTON, BASE_COLOR_NORMAL)));
+    DrawRectangleRoundedLines(LayoutPaddingAll(bounds, 2), 0.4, 20, 2, GetColor(GuiGetStyle(BUTTON, BORDER_COLOR_NORMAL)));
+    GuiLabel(LayoutPaddingSymmetric(bounds, _BUTTON_LABEL_PADDING, 0), text);
 }
 
 #endif // RLLAYOUT_IMPLEMENTATION

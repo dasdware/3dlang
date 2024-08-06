@@ -7,6 +7,9 @@
 #define RL_DIALOG_IMPLEMENTATION
 #include <rldialog.h>
 
+#define RL_GUIEXT_IMPLEMENTATION
+#include <rlguiext.h>
+
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
 
@@ -38,25 +41,6 @@ typedef struct {
     char gui_filename[1024];
 } UI_State;
 
-bool GuiIsKeyPressed(int key) {
-    return !GuiIsLocked() && IsKeyPressed(key);
-}
-
-void LayoutLabel(const char* text)
-{
-    int s = GetTextWidth(text);
-    GuiLabel(LayoutRectangle(RL_DEFAULT(s)), text);
-}
-
-void LayoutButtonLabel(const char* text)
-{
-    int s = GetTextWidth(text);
-    Rectangle bounds = LayoutRectangle(RL_DEFAULT(s + 2*5+1));
-    DrawRectangleRounded(bounds, 0.4, 20, GetColor(GuiGetStyle(BUTTON, BASE_COLOR_NORMAL)));
-    DrawRectangleRoundedLines(LayoutPaddingAll(bounds, 2), 0.4, 20, 2, GetColor(GuiGetStyle(BUTTON, BORDER_COLOR_NORMAL)));
-    GuiLabel(LayoutPaddingSymmetric(bounds, 5, 0), text);
-}
-
 void initial_screen(UI_State *state) {
     LayoutBeginScreen(0);
     {
@@ -66,17 +50,17 @@ void initial_screen(UI_State *state) {
             {
                 LayoutBeginStack(RLD_DEFAULT, DIRECTION_HORIZONTAL, 30, 10);
                 {
-                    LayoutLabel("Press");
-                    LayoutButtonLabel("N");
-                    LayoutLabel("to create a new empty 3D program.");
+                    LayoutGuiLabel("Press");
+                    LayoutGuiButtonLabel("N");
+                    LayoutGuiLabel("to create a new empty 3D program.");
                 }
                 LayoutEnd();
 
                 LayoutBeginStack(RLD_DEFAULT, DIRECTION_HORIZONTAL, 30, 10);
                 {
-                    LayoutLabel("Press");
-                    LayoutButtonLabel("O");
-                    LayoutLabel("to open an existing 3D program file.");
+                    LayoutGuiLabel("Press");
+                    LayoutGuiButtonLabel("O");
+                    LayoutGuiLabel("to open an existing 3D program file.");
                 }
                 LayoutEnd();
 
