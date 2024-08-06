@@ -22,6 +22,8 @@
 #define NOB_IMPLEMENTATION
 #include <nob.h>
 
+#define PROGRAM_TITLE "3dIDE"
+
 #define INPUT_CELL_COLOR   CLITERAL(Color){ 200, 255, 220, 255 }
 #define ACTIVE_CELL_COLOR  CLITERAL(Color){ 255, 255, 220, 255 }
 #define STOP_CELL_COLOR    CLITERAL(Color){ 255, 220, 220, 255 }
@@ -41,10 +43,19 @@ typedef struct {
     char gui_filename[1024];
 } UI_State;
 
+static bool close_requested;
+
+void load_file(UI_State* state, const char* filename)
+{
+    strncpy(state->gui_filename, filename, 1024);
+    td_read(&state->history, filename, state->gui_input_a, state->gui_input_b);
+    SetWindowTitle(TextFormat("%s - %s", state->gui_filename, PROGRAM_TITLE));
+}
+
 void initial_screen(UI_State *state) {
     LayoutBeginScreen(0);
     {
-        LayoutBeginRectangle(RLD_DEFAULT, LayoutCenter(LayoutDefault(), 430, 70));
+        LayoutBeginRectangle(RLD_DEFAULT, LayoutCenter(LayoutDefault(), 430, 110));
         {
             LayoutBeginStack(RLD_DEFAULT, DIRECTION_VERTICAL, 30, 10);
             {
@@ -64,6 +75,13 @@ void initial_screen(UI_State *state) {
                 }
                 LayoutEnd();
 
+                LayoutBeginStack(RLD_DEFAULT, DIRECTION_HORIZONTAL, 30, 10);
+                {
+                    LayoutGuiLabel("Press");
+                    LayoutGuiButtonLabel("ESC");
+                    LayoutGuiLabel("to exit the application.");
+                }
+                LayoutEnd();
             }
             LayoutEnd();
         }
@@ -72,6 +90,8 @@ void initial_screen(UI_State *state) {
     LayoutEnd();
     if (GuiIsKeyPressed(KEY_O)) {
         GuiFileDialogOpen(&state->open_dialog);
+    } else if (GuiIsKeyPressed(KEY_ESCAPE)) {
+        close_requested = true;
     }
 }
 
@@ -87,21 +107,16 @@ void run_screen(UI_State *state) {
         {
             LayoutBeginStack(RL_ANCHOR_TOP(30), DIRECTION_HORIZONTAL, 30, 10);
             {
-                if (GuiButton(LayoutOpposite(), "#75#") || GuiIsKeyPressed(KEY_F5)) {
-                    td_read(&state->history, state->gui_filename, state->gui_input_a, state->gui_input_b);
+                if (GuiButton(LayoutDefault(), "#159#") || GuiIsKeyPressed(KEY_ESCAPE)) {
+                    close_requested = true;
                 }
 
-                if (GuiButton(LayoutOpposite(), "#01#") || GuiIsKeyPressed(KEY_O)) {
+                if (GuiButton(LayoutDefault(), "#01#") || GuiIsKeyPressed(KEY_O)) {
                     GuiFileDialogOpen(&state->open_dialog);
                 }
 
-                if (GuiTextBox(LayoutRemaining(), state->gui_filename, 1024, gui_active_element == UI_FILENAME)) {
-                    if (gui_active_element == UI_FILENAME) {
-                        gui_active_element = UI_NONE;
-                        td_read(&state->history, state->gui_filename, state->gui_input_a, state->gui_input_b);
-                    } else {
-                        gui_active_element = UI_FILENAME;
-                    }
+                if (GuiButton(LayoutDefault(), "#75#") || GuiIsKeyPressed(KEY_F5)) {
+                    td_read(&state->history, state->gui_filename, state->gui_input_a, state->gui_input_b);
                 }
             }
             LayoutEnd();
@@ -247,34 +262,33 @@ int main(int argc, char** argv)
 {
     UI_State state = {0};
     GuiFileDialogInit(&state.open_dialog, "Open 3dl Program", "./examples", ".3dl");
+
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_ALWAYS_RUN);
+    InitWindow(16*90, 9*90, PROGRAM_TITLE);
+    SetTargetFPS(60);
+
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+    SetExitKey(0);
+
     /*const char* program =*/ nob_shift_args(&argc, &argv);
     if (argc >= 1) {
         const char* filename = nob_shift_args(&argc, &argv);
 
-        int input_a = 0;
         if (argc > 0) {
-            input_a = atoi(nob_shift_args(&argc, &argv));
+            state.gui_input_a = atoi(nob_shift_args(&argc, &argv));
         }
 
-        int input_b = 0;
         if (argc > 0) {
-            input_b = atoi(nob_shift_args(&argc, &argv));
+            state.gui_input_b = atoi(nob_shift_args(&argc, &argv));
         }
-
-        td_read(&state.history, filename, input_a, input_b);
 
         state.gui_input_a = state.history.input_a;
         state.gui_input_b = state.history.input_b;
-        strncpy(state.gui_filename, filename, 1024);
+        load_file(&state, filename);
     }
 
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_ALWAYS_RUN);
-    InitWindow(16*90, 9*90, "3dIDE");
-    SetTargetFPS(60);
-    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
-    SetExitKey(0);
-
-    while (!WindowShouldClose()) {
+    close_requested = false;
+    while (!close_requested && !WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
         GuiFileDialogCheck(&state.open_dialog);
@@ -286,9 +300,7 @@ int main(int argc, char** argv)
         }
 
         if (GuiFileDialog(&state.open_dialog)) {
-            const char* filename = GuiFileDialogFileName(&state.open_dialog);
-            td_read(&state.history, filename, state.gui_input_a, state.gui_input_b);
-            strncpy(state.gui_filename, filename, 1024);
+            load_file(&state, GuiFileDialogFileName(&state.open_dialog));
         }
 
         EndDrawing();
