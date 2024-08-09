@@ -173,11 +173,17 @@ void run_screen(UI_State *state) {
                 // GRID
                 {
                     Rectangle grid_bounds = LayoutDefault();
-                    int cell_size = min(grid_bounds.width / state->history.cols, grid_bounds.height / state->history.rows);
+                    int cell_size = 2 * GuiGetStyle(DEFAULT, TEXT_SIZE);
 
                     TD_FOREACH(current_board, cursor) {
                         size_t ox = grid_bounds.x + cursor.col * cell_size;
                         size_t oy = grid_bounds.y + cursor.row * cell_size;
+                        Rectangle bounds = {
+                            .x = ox,
+                            .y = oy,
+                            .width = cell_size,
+                            .height = cell_size,
+                        };
 
                         if (cursor.cell->active) {
                             DrawRectangle(ox, oy, cell_size, cell_size, ACTIVE_CELL_COLOR);
@@ -200,11 +206,9 @@ void run_screen(UI_State *state) {
                         case CELL_STOP:
                             DrawCircle(ox + cell_size / 2, oy + cell_size / 2, cell_size / 16, LIGHTGRAY);
                             break;
-                        case     CELL_NUMBER: {
+                        case CELL_NUMBER: {
                             const char* text = TextFormat("%d", cursor.cell->value);
-                            int text_height = cell_size * 1 / 2;
-                            int text_width = MeasureText(text, text_height);
-                            DrawText(text, ox + cell_size / 2 - text_width / 2, oy + cell_size / 2 - text_height / 2, text_height, text_color);
+                            GuiLabel(LayoutCenter(bounds, GetTextWidth(text), bounds.height), text);
                             break;
                         }
                         case CELL_MOVE_LEFT:
@@ -220,9 +224,7 @@ void run_screen(UI_State *state) {
                         case CELL_CMP_NOTEQUAL:
                         case CELL_TIMEWARP: {
                             const char* text = symbols[cursor.cell->kind];
-                            int text_height = cell_size * 1 / 2;
-                            int text_width = MeasureText(text, text_height);
-                            DrawText(text, ox + cell_size / 2 - text_width / 2, oy + cell_size / 2 - text_height / 2, text_height, text_color);
+                            GuiLabel(LayoutCenter(bounds, GetTextWidth(text), bounds.height), text);
                             break;
                         }
                         default: {
