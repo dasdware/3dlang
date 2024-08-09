@@ -42,6 +42,7 @@ typedef struct {
     int gui_input_b;
     char gui_filename[1024];
     bool close_requested;
+    Vector2 grid_scroll;
 } UI_State;
 
 void load_file(UI_State* state, const char* filename)
@@ -172,43 +173,48 @@ void run_screen(UI_State *state) {
 
                 // GRID
                 {
-                    Rectangle grid_bounds = LayoutDefault();
                     int cell_size = 2 * GuiGetStyle(DEFAULT, TEXT_SIZE);
+                    Rectangle grid_bounds = {
+                        .x = 0,
+                        .y = 0,
+                        .width = current_board->history->cols * cell_size,
+                        .height = current_board->history->rows * cell_size,
+                    };
+                    Rectangle grid_view;
+                    GuiScrollPanel(LayoutDefault(), NULL, grid_bounds, &state->grid_scroll, &grid_view);
+
+                    BeginScissorMode(grid_view.x, grid_view.y, grid_view.width, grid_view.height);
 
                     TD_FOREACH(current_board, cursor) {
-                        size_t ox = grid_bounds.x + cursor.col * cell_size;
-                        size_t oy = grid_bounds.y + cursor.row * cell_size;
-                        Rectangle bounds = {
-                            .x = ox,
-                            .y = oy,
+                        Rectangle cell_bounds = {
+                            .x = grid_view.x + state->grid_scroll.x + cursor.col * cell_size,
+                            .y = grid_view.y + state->grid_scroll.y + cursor.row * cell_size,
                             .width = cell_size,
                             .height = cell_size,
                         };
 
                         if (cursor.cell->active) {
-                            DrawRectangle(ox, oy, cell_size, cell_size, ACTIVE_CELL_COLOR);
+                            DrawRectangleRec(cell_bounds, ACTIVE_CELL_COLOR);
                         } else if (cursor.cell->input_kind == CELL_INPUT_A || cursor.cell->input_kind == CELL_INPUT_B) {
-                            DrawRectangle(ox, oy, cell_size, cell_size, INPUT_CELL_COLOR);
+                            DrawRectangleRec(cell_bounds, INPUT_CELL_COLOR);
                             if (cursor.cell->input_kind == CELL_INPUT_A) {
-                                DrawText("A", ox + 4, oy + 2, cell_size / 8, BROWN);
+                                DrawText("A", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 8, BROWN);
                             } else if (cursor.cell->input_kind == CELL_INPUT_B) {
-                                DrawText("B", ox + 4, oy + 2, cell_size / 8, BROWN);
+                                DrawText("B", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 8, BROWN);
                             }
                         } else if (cursor.cell->kind == CELL_STOP) {
-                            DrawRectangle(ox, oy, cell_size, cell_size, STOP_CELL_COLOR);
-                            DrawText("S", ox + 4, oy + 2, cell_size / 8, RED);
+                            DrawRectangleRec(cell_bounds, STOP_CELL_COLOR);
+                            DrawText("S", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 8, RED);
                         }
-
-                        Color text_color = GRAY;
 
                         switch (cursor.cell->kind) {
                         case CELL_EMPTY:
                         case CELL_STOP:
-                            DrawCircle(ox + cell_size / 2, oy + cell_size / 2, cell_size / 16, LIGHTGRAY);
+                            DrawCircle(cell_bounds.x + cell_size / 2, cell_bounds.y + cell_size / 2, cell_size / 16, LIGHTGRAY);
                             break;
                         case CELL_NUMBER: {
                             const char* text = TextFormat("%d", cursor.cell->value);
-                            GuiLabel(LayoutCenter(bounds, GetTextWidth(text), bounds.height), text);
+                            GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text), cell_bounds.height), text);
                             break;
                         }
                         case CELL_MOVE_LEFT:
@@ -224,31 +230,33 @@ void run_screen(UI_State *state) {
                         case CELL_CMP_NOTEQUAL:
                         case CELL_TIMEWARP: {
                             const char* text = symbols[cursor.cell->kind];
-                            GuiLabel(LayoutCenter(bounds, GetTextWidth(text), bounds.height), text);
+                            GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text), cell_bounds.height), text);
                             break;
                         }
                         default: {
-                            DrawRectangle(ox, oy, cell_size, cell_size, RED);
-                            DrawText(td_cell_kind_name(cursor.cell->kind), ox + 4, oy + 4, 16, GRAY);
+                            DrawRectangleRec(cell_bounds, RED);
+                            GuiLabel(cell_bounds, td_cell_kind_name(cursor.cell->kind));
                             break;
                         }
                         }
                     }
 
                     for (size_t x = 0; x <= state->history.cols; ++x) {
-                        DrawLine(grid_bounds.x + x * cell_size,
-                                 grid_bounds.y,
-                                 grid_bounds.x + x * cell_size,
-                                 grid_bounds.y + state->history.rows * cell_size,
+                        DrawLine(grid_view.x + state->grid_scroll.x + x * cell_size,
+                                 grid_view.y + state->grid_scroll.y,
+                                 grid_view.x + state->grid_scroll.x + x * cell_size,
+                                 grid_view.y + state->grid_scroll.y + state->history.rows * cell_size,
                                  LIGHTGRAY);
                     }
                     for (size_t y = 0; y <= state->history.rows; ++y) {
-                        DrawLine(grid_bounds.x,
-                                 grid_bounds.y + y * cell_size,
-                                 grid_bounds.x + state->history.cols * cell_size,
-                                 grid_bounds.y + y * cell_size,
+                        DrawLine(grid_view.x + state->grid_scroll.x,
+                                 grid_view.y + state->grid_scroll.y + y * cell_size,
+                                 grid_view.x + state->grid_scroll.x + state->history.cols * cell_size,
+                                 grid_view.y + state->grid_scroll.y + y * cell_size,
                                  LIGHTGRAY);
                     }
+
+                    EndScissorMode();
                 }
             }
             LayoutEnd();
