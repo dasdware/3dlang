@@ -41,9 +41,8 @@ typedef struct {
     int gui_input_a;
     int gui_input_b;
     char gui_filename[1024];
+    bool close_requested;
 } UI_State;
-
-static bool close_requested;
 
 void load_file(UI_State* state, const char* filename)
 {
@@ -91,13 +90,12 @@ void initial_screen(UI_State *state) {
     if (GuiIsKeyPressed(KEY_O)) {
         GuiFileDialogOpen(&state->open_dialog);
     } else if (GuiIsKeyPressed(KEY_ESCAPE)) {
-        close_requested = true;
+        state->close_requested = true;
     }
 }
 
 void run_screen(UI_State *state) {
     static const char* symbols[] = { ".", "N", "<", ">", "^", "v", "+", "-", "/", "*", "%", "=", "#", "@", "S" };
-    static UI_Element gui_active_element = UI_NONE;
 
     TD_Board* current_board = td_current_board(&state->history);
 
@@ -108,7 +106,7 @@ void run_screen(UI_State *state) {
             LayoutBeginStack(RL_ANCHOR_TOP(30), DIRECTION_HORIZONTAL, 30, 10);
             {
                 if (GuiButton(LayoutDefault(), "#159#") || GuiIsKeyPressed(KEY_ESCAPE)) {
-                    close_requested = true;
+                    state->close_requested = true;
                 }
 
                 if (GuiButton(LayoutDefault(), "#01#") || GuiIsKeyPressed(KEY_O)) {
@@ -287,8 +285,7 @@ int main(int argc, char** argv)
         load_file(&state, filename);
     }
 
-    close_requested = false;
-    while (!close_requested && !WindowShouldClose()) {
+    while (!state.close_requested && !WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
         GuiFileDialogCheck(&state.open_dialog);
