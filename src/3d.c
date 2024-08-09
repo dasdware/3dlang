@@ -43,6 +43,7 @@ typedef struct {
     char gui_filename[1024];
     bool close_requested;
     Vector2 grid_scroll;
+    int grid_zoom;
 } UI_State;
 
 void load_file(UI_State* state, const char* filename)
@@ -97,6 +98,10 @@ void initial_screen(UI_State *state) {
 
 void run_screen(UI_State *state) {
     static const char* symbols[] = { ".", "N", "<", ">", "^", "v", "+", "-", "/", "*", "%", "=", "#", "@", "S" };
+    static const int zoom_levels[] = { 25, 50, 75, 100, 150, 200 };
+    static const int zoom_level_min = 0;
+    static const int zoom_level_max = NOB_ARRAY_LEN(zoom_levels) - 1;
+    static const int zoom_level_default = 3;
 
     TD_Board* current_board = td_current_board(&state->history);
 
@@ -173,90 +178,131 @@ void run_screen(UI_State *state) {
 
                 // GRID
                 {
-                    int cell_size = 2 * GuiGetStyle(DEFAULT, TEXT_SIZE);
-                    Rectangle grid_bounds = {
-                        .x = 0,
-                        .y = 0,
-                        .width = current_board->history->cols * cell_size,
-                        .height = current_board->history->rows * cell_size,
-                    };
-                    Rectangle grid_view;
-                    GuiScrollPanel(LayoutDefault(), NULL, grid_bounds, &state->grid_scroll, &grid_view);
-
-                    BeginScissorMode(grid_view.x, grid_view.y, grid_view.width, grid_view.height);
-
-                    TD_FOREACH(current_board, cursor) {
-                        Rectangle cell_bounds = {
-                            .x = grid_view.x + state->grid_scroll.x + cursor.col * cell_size,
-                            .y = grid_view.y + state->grid_scroll.y + cursor.row * cell_size,
-                            .width = cell_size,
-                            .height = cell_size,
-                        };
-
-                        if (cursor.cell->active) {
-                            DrawRectangleRec(cell_bounds, ACTIVE_CELL_COLOR);
-                        } else if (cursor.cell->input_kind == CELL_INPUT_A || cursor.cell->input_kind == CELL_INPUT_B) {
-                            DrawRectangleRec(cell_bounds, INPUT_CELL_COLOR);
-                            if (cursor.cell->input_kind == CELL_INPUT_A) {
-                                DrawText("A", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 8, BROWN);
-                            } else if (cursor.cell->input_kind == CELL_INPUT_B) {
-                                DrawText("B", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 8, BROWN);
+                    LayoutBeginAnchored(RLD_DEFAULT, 5);
+                    {
+                        LayoutBeginStack(RL_ANCHOR_BOTTOM(29), DIRECTION_HORIZONTAL, 29, 10);
+                        {
+                            if (state->grid_zoom == zoom_level_default) {
+                                GuiDisable();
                             }
-                        } else if (cursor.cell->kind == CELL_STOP) {
-                            DrawRectangleRec(cell_bounds, STOP_CELL_COLOR);
-                            DrawText("S", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 8, RED);
+                            if (GuiButton(LayoutOpposite(), "1:1") || GuiIsKeyPressed(KEY_KP_0)) {
+                                state->grid_zoom = zoom_level_default;
+                            }
+                            GuiEnable();
+
+                            if (state->grid_zoom >= zoom_level_max) {
+                                GuiDisable();
+                            }
+                            if ((GuiButton(LayoutOpposite(), "+") || GuiIsKeyPressed(KEY_KP_ADD)) && state->grid_zoom < zoom_level_max) {
+                                state->grid_zoom++;
+                            }
+                            GuiEnable();
+
+                            Rectangle zoom_text_bounds = LayoutRectangle(RL_OPPOSITE(GetTextWidth("100%")));
+                            const char* zoom_text = TextFormat("%d%%", zoom_levels[state->grid_zoom]);
+                            GuiLabel(LayoutCenter(zoom_text_bounds, GetTextWidth(zoom_text), zoom_text_bounds.height), zoom_text);
+
+                            if (state->grid_zoom <= zoom_level_min) {
+                                GuiDisable();
+                            }
+                            if ((GuiButton(LayoutOpposite(), "-") || GuiIsKeyPressed(KEY_KP_SUBTRACT)) && state->grid_zoom > zoom_level_min) {
+                                state->grid_zoom--;
+                            }
+                            GuiEnable();
+                        }
+                        LayoutEnd();
+
+                        int old_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
+                        GuiSetStyle(DEFAULT, TEXT_SIZE, old_text_size * zoom_levels[state->grid_zoom] / 100);
+
+                        int cell_size = 2 * GuiGetStyle(DEFAULT, TEXT_SIZE);
+                        Rectangle grid_bounds = {
+                            .x = 0,
+                            .y = 0,
+                            .width = current_board->history->cols * cell_size,
+                            .height = current_board->history->rows * cell_size,
+                        };
+                        Rectangle grid_view;
+                        GuiScrollPanel(LayoutDefault(), NULL, grid_bounds, &state->grid_scroll, &grid_view);
+
+                        BeginScissorMode(grid_view.x, grid_view.y, grid_view.width, grid_view.height);
+
+                        TD_FOREACH(current_board, cursor) {
+                            Rectangle cell_bounds = {
+                                .x = grid_view.x + state->grid_scroll.x + cursor.col * cell_size,
+                                .y = grid_view.y + state->grid_scroll.y + cursor.row * cell_size,
+                                .width = cell_size,
+                                .height = cell_size,
+                            };
+
+                            if (cursor.cell->active) {
+                                DrawRectangleRec(cell_bounds, ACTIVE_CELL_COLOR);
+                            } else if (cursor.cell->input_kind == CELL_INPUT_A || cursor.cell->input_kind == CELL_INPUT_B) {
+                                DrawRectangleRec(cell_bounds, INPUT_CELL_COLOR);
+                                if (cursor.cell->input_kind == CELL_INPUT_A) {
+                                    DrawText("A", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 4, BROWN);
+                                } else if (cursor.cell->input_kind == CELL_INPUT_B) {
+                                    DrawText("B", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 4, BROWN);
+                                }
+                            } else if (cursor.cell->kind == CELL_STOP) {
+                                DrawRectangleRec(cell_bounds, STOP_CELL_COLOR);
+                                DrawText("S", cell_bounds.x + 4, cell_bounds.y + 2, cell_size / 4, RED);
+                            }
+
+                            switch (cursor.cell->kind) {
+                            case CELL_EMPTY:
+                            case CELL_STOP:
+                                DrawCircle(cell_bounds.x + cell_size / 2, cell_bounds.y + cell_size / 2, cell_size / 16, LIGHTGRAY);
+                                break;
+                            case CELL_NUMBER: {
+                                const char* text = TextFormat("%d", cursor.cell->value);
+                                GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text), cell_bounds.height), text);
+                                break;
+                            }
+                            case CELL_MOVE_LEFT:
+                            case CELL_MOVE_RIGHT:
+                            case CELL_MOVE_UP:
+                            case CELL_MOVE_DOWN:
+                            case CELL_CALC_ADD:
+                            case CELL_CALC_SUBTRACT:
+                            case CELL_CALC_DIVIDE:
+                            case CELL_CALC_MULTIPLY:
+                            case CELL_CALC_REMAINDER:
+                            case CELL_CMP_EQUAL:
+                            case CELL_CMP_NOTEQUAL:
+                            case CELL_TIMEWARP: {
+                                const char* text = symbols[cursor.cell->kind];
+                                GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text), cell_bounds.height), text);
+                                break;
+                            }
+                            default: {
+                                DrawRectangleRec(cell_bounds, RED);
+                                GuiLabel(cell_bounds, td_cell_kind_name(cursor.cell->kind));
+                                break;
+                            }
+                            }
                         }
 
-                        switch (cursor.cell->kind) {
-                        case CELL_EMPTY:
-                        case CELL_STOP:
-                            DrawCircle(cell_bounds.x + cell_size / 2, cell_bounds.y + cell_size / 2, cell_size / 16, LIGHTGRAY);
-                            break;
-                        case CELL_NUMBER: {
-                            const char* text = TextFormat("%d", cursor.cell->value);
-                            GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text), cell_bounds.height), text);
-                            break;
+                        for (size_t x = 0; x <= state->history.cols; ++x) {
+                            DrawLine(grid_view.x + state->grid_scroll.x + x * cell_size,
+                                     grid_view.y + state->grid_scroll.y,
+                                     grid_view.x + state->grid_scroll.x + x * cell_size,
+                                     grid_view.y + state->grid_scroll.y + state->history.rows * cell_size,
+                                     LIGHTGRAY);
                         }
-                        case CELL_MOVE_LEFT:
-                        case CELL_MOVE_RIGHT:
-                        case CELL_MOVE_UP:
-                        case CELL_MOVE_DOWN:
-                        case CELL_CALC_ADD:
-                        case CELL_CALC_SUBTRACT:
-                        case CELL_CALC_DIVIDE:
-                        case CELL_CALC_MULTIPLY:
-                        case CELL_CALC_REMAINDER:
-                        case CELL_CMP_EQUAL:
-                        case CELL_CMP_NOTEQUAL:
-                        case CELL_TIMEWARP: {
-                            const char* text = symbols[cursor.cell->kind];
-                            GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text), cell_bounds.height), text);
-                            break;
+                        for (size_t y = 0; y <= state->history.rows; ++y) {
+                            DrawLine(grid_view.x + state->grid_scroll.x,
+                                     grid_view.y + state->grid_scroll.y + y * cell_size,
+                                     grid_view.x + state->grid_scroll.x + state->history.cols * cell_size,
+                                     grid_view.y + state->grid_scroll.y + y * cell_size,
+                                     LIGHTGRAY);
                         }
-                        default: {
-                            DrawRectangleRec(cell_bounds, RED);
-                            GuiLabel(cell_bounds, td_cell_kind_name(cursor.cell->kind));
-                            break;
-                        }
-                        }
-                    }
 
-                    for (size_t x = 0; x <= state->history.cols; ++x) {
-                        DrawLine(grid_view.x + state->grid_scroll.x + x * cell_size,
-                                 grid_view.y + state->grid_scroll.y,
-                                 grid_view.x + state->grid_scroll.x + x * cell_size,
-                                 grid_view.y + state->grid_scroll.y + state->history.rows * cell_size,
-                                 LIGHTGRAY);
-                    }
-                    for (size_t y = 0; y <= state->history.rows; ++y) {
-                        DrawLine(grid_view.x + state->grid_scroll.x,
-                                 grid_view.y + state->grid_scroll.y + y * cell_size,
-                                 grid_view.x + state->grid_scroll.x + state->history.cols * cell_size,
-                                 grid_view.y + state->grid_scroll.y + y * cell_size,
-                                 LIGHTGRAY);
-                    }
+                        EndScissorMode();
 
-                    EndScissorMode();
+                        GuiSetStyle(DEFAULT, TEXT_SIZE, old_text_size);
+                    }
+                    LayoutEnd();
                 }
             }
             LayoutEnd();
@@ -269,6 +315,7 @@ void run_screen(UI_State *state) {
 int main(int argc, char** argv)
 {
     UI_State state = {0};
+    state.grid_zoom = 3;
     GuiFileDialogInit(&state.open_dialog, "Open 3dl Program", "./examples", ".3dl");
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_ALWAYS_RUN);
