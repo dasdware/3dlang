@@ -2,6 +2,7 @@
 #define __3DL_H
 
 #include <arena.h>
+#include <dw_array.h>
 #include <error.h>
 #include <stdbool.h>
 
@@ -51,13 +52,6 @@ typedef struct
     bool active;
 } TD_Cell;
 
-typedef struct
-{
-    TD_Cell *items;
-    size_t capacity;
-    size_t count;
-} TD_CellList;
-
 struct _TD_BoardHistory;
 
 typedef struct
@@ -105,12 +99,7 @@ typedef struct
     int dt;
 } TD_Timewarp;
 
-typedef struct
-{
-    TD_Timewarp *items;
-    size_t capacity;
-    size_t count;
-} TD_Timewarps;
+typedef da_array(TD_Timewarp) TD_Timewarps;
 
 // Enum operations
 const char* td_cell_kind_name(TD_CellKind kind);

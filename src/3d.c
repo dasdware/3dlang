@@ -22,6 +22,9 @@
 #define NOB_IMPLEMENTATION
 #include <nob.h>
 
+#define DW_ARRAY_IMPLEMENTATION
+#include <dw_array.h>
+
 #define PROGRAM_TITLE "3dIDE"
 
 #define INPUT_CELL_COLOR   CLITERAL(Color){ 200, 255, 220, 255 }

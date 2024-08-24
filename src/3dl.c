@@ -1,6 +1,8 @@
 #include <3dl.h>
 #include <nob.h>
 
+#include <dw_array.h>
+
 // Enum operations
 
 const char* td_cell_kind_name(TD_CellKind kind) {
@@ -73,7 +75,7 @@ void td_load(TD_BoardHistory* history, const char* board_def, int input_a, int i
     first_board.result = 0;
     first_board.time = 1;
 
-    TD_CellList all_cells = {0};
+    da_array(TD_Cell) all_cells = 0;
     while (board_description.count > 0) {
         Nob_String_View line = nob_sv_trim_left(nob_sv_chop_by_delim(&board_description, '\n'));
         if (line.count == 0) {
@@ -160,7 +162,7 @@ void td_load(TD_BoardHistory* history, const char* board_def, int input_a, int i
                 nob_sv_advance(line);
             }
 
-            nob_da_append(&all_cells, cell);
+            da_add(all_cells, cell);
 
             cols++;
             line = nob_sv_trim_left(line);
@@ -171,9 +173,10 @@ void td_load(TD_BoardHistory* history, const char* board_def, int input_a, int i
 
     history->cells_bytes = history->cols * history->rows * sizeof(TD_Cell);
     first_board.cells = arena_alloc(&history->cells_arena, history->cells_bytes);
-    memcpy(first_board.cells, all_cells.items, history->cells_bytes);
+    memcpy(first_board.cells, all_cells, history->cells_bytes);
 
     nob_da_append(history, first_board);
+    da_free(all_cells);
 
     history->loaded = true;
 }
@@ -305,7 +308,7 @@ void _td_collect_timewarps(TD_Board* board, TD_Timewarps* timewarps) {
                     .value = op_v->value,
                     .dt = op_dt->value,
                 };
-                nob_da_append(timewarps, tw);
+                da_add(*timewarps, tw);
             }
             break;
         }
@@ -349,23 +352,25 @@ void td_forward(TD_BoardHistory* history) {
     history->tick++;
 
     if (history->tick == history->count) {
-        TD_Timewarps timewarps = {0};
+        TD_Timewarps timewarps = 0;
         _td_collect_timewarps(current_board, &timewarps);
-        if (timewarps.count > 0) {
+        if (da_size(timewarps) > 0) {
             int result_dt = 0;
-            for (size_t i = 0; i < timewarps.count; ++i) {
-                TD_Timewarp tw = timewarps.items[i];
+            for (size_t i = 0; i < da_size(timewarps); ++i) {
+                TD_Timewarp tw = timewarps[i];
                 if (tw.dt < 1 || (result_dt > 0 && tw.dt != result_dt)) {
                     _td_crash(history);
+                    da_free(timewarps);
                     return;
                 } else if (result_dt == 0) {
                     result_dt = tw.dt;
                 }
 
-                for (size_t j = i + 1; j < timewarps.count; ++j) {
-                    TD_Timewarp two = timewarps.items[j];
+                for (size_t j = i + 1; j < da_size(timewarps); ++j) {
+                    TD_Timewarp two = timewarps[j];
                     if (td_cursor_same(tw.cell_cursor, two.cell_cursor) && tw.value != two.value) {
                         _td_crash(history);
+                        da_free(timewarps);
                         return;
                     }
                 }
@@ -381,17 +386,19 @@ void td_forward(TD_BoardHistory* history) {
 
             if (tw_index < 0) {
                 _td_crash(history);
+                da_free(timewarps);
                 return;
             }
 
             TD_Board* next_board = _td_clone_board(history, tw_index, tw_time);
-            for (size_t i = 0; i < timewarps.count; ++i) {
-                TD_Timewarp tw = timewarps.items[i];
+            for (size_t i = 0; i < da_size(timewarps); ++i) {
+                TD_Timewarp tw = timewarps[i];
                 _td_set_cell(td_cursor_board(tw.cell_cursor, next_board), _td_make_number_cell(tw.value));
                 _td_activate_cell(td_cursor_board(tw.timewarp_cursor, next_board));
                 _td_activate_cell(td_cursor_board(tw.cell_cursor, next_board));
             }
 
+            da_free(timewarps);
             return;
         }
 
