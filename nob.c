@@ -5,8 +5,7 @@
 #define BUILD_EXTENSION ".exe"
 #define BUILD_OUTPUT(output) "." NOB_PATH_DELIM_STR BUILD_DIR NOB_PATH_DELIM_STR output BUILD_EXTENSION
 
-#define RAYLIB_VERSION "5.0"
-#define RAYLIB_SRC_DIR "3rdparty" NOB_PATH_DELIM_STR "raylib-" RAYLIB_VERSION NOB_PATH_DELIM_STR "src"
+#define RAYLIB_SRC_DIR "3rdparty" NOB_PATH_DELIM_STR "raylib" NOB_PATH_DELIM_STR "src"
 #define RAYLIB_BUILD_DIR BUILD_DIR NOB_PATH_DELIM_STR "raylib"
 
 #define RAYGUI_SRC_DIR "3rdparty" NOB_PATH_DELIM_STR "raygui"
@@ -21,7 +20,6 @@ void gcc(Nob_Cmd* cmd) {
     nob_cmd_append(cmd, "gcc");
     nob_cmd_append(cmd, "-Wall", "-Wextra", "-ggdb", "-static");
     nob_cmd_append(cmd, "-I./include/");
-    // nob_cmd_append(cmd, "-I./include/curl");
     nob_cmd_append(cmd, "-I." NOB_PATH_DELIM_STR RAYGUI_SRC_DIR);
     nob_cmd_append(cmd, "-I." NOB_PATH_DELIM_STR RAYLIB_SRC_DIR);
     nob_cmd_append(cmd, "-L." NOB_PATH_DELIM_STR RAYLIB_BUILD_DIR);

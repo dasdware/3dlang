@@ -404,7 +404,7 @@ void LayoutGuiButtonLabel(const char* text)
     }
 
     DrawRectangleRounded(bounds, 0.4, 20, GetColor(GuiGetStyle(BUTTON, BASE_COLOR_NORMAL)));
-    DrawRectangleRoundedLines(LayoutPaddingAll(bounds, 2), 0.4, 20, 2, GetColor(GuiGetStyle(BUTTON, BORDER_COLOR_NORMAL)));
+    DrawRectangleRoundedLinesEx(LayoutPaddingAll(bounds, 2), 0.4, 20, 2, GetColor(GuiGetStyle(BUTTON, BORDER_COLOR_NORMAL)));
     GuiLabel(LayoutPaddingSymmetric(bounds, _BUTTON_LABEL_PADDING, 0), text);
 }
 
