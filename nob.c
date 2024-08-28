@@ -8,7 +8,7 @@
 #define RAYLIB_SRC_DIR "3rdparty" NOB_PATH_DELIM_STR "raylib" NOB_PATH_DELIM_STR "src"
 #define RAYLIB_BUILD_DIR BUILD_DIR NOB_PATH_DELIM_STR "raylib"
 
-#define RAYGUI_SRC_DIR "3rdparty" NOB_PATH_DELIM_STR "raygui"
+#define RAYGUI_SRC_DIR "3rdparty" NOB_PATH_DELIM_STR "raygui" NOB_PATH_DELIM_STR "src"
 
 #define _3D_TARGET "3d"
 #define _3D_OUTPUT BUILD_OUTPUT(_3D_TARGET)

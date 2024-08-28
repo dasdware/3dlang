@@ -380,7 +380,7 @@ void LayoutGuiLabel(const char* text)
     RL_Layout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
     Rectangle bounds = {0};
     if (layout->kind == LAYOUT_STACK && layout->as.stack.direction == DIRECTION_HORIZONTAL) {
-        bounds = LayoutRectangle(RL_DEFAULT(GetTextWidth(text)));
+        bounds = LayoutRectangle(RL_DEFAULT(GetTextWidth(text) + 2));
     } else if (layout->kind == LAYOUT_STACK && layout->as.stack.direction == DIRECTION_VERTICAL) {
         bounds = LayoutRectangle(RL_DEFAULT(GuiGetStyle(DEFAULT, TEXT_SIZE)));
     } else {
@@ -396,7 +396,7 @@ void LayoutGuiButtonLabel(const char* text)
     RL_Layout* layout = &rl_layout_stack[rl_layout_stack_count - 1];
     Rectangle bounds = {0};
     if (layout->kind == LAYOUT_STACK && layout->as.stack.direction == DIRECTION_HORIZONTAL) {
-        bounds = LayoutRectangle(RL_DEFAULT(GetTextWidth(text) + 2*_BUTTON_LABEL_PADDING+1));
+        bounds = LayoutRectangle(RL_DEFAULT(GetTextWidth(text) + 2*_BUTTON_LABEL_PADDING+2));
     } else if (layout->kind == LAYOUT_STACK && layout->as.stack.direction == DIRECTION_VERTICAL) {
         bounds = LayoutRectangle(RL_DEFAULT(GuiGetStyle(DEFAULT, TEXT_SIZE) + 2*_BUTTON_LABEL_PADDING+1));
     } else {

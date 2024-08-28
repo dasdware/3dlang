@@ -201,9 +201,9 @@ void run_screen(UI_State *state) {
                             }
                             GuiEnable();
 
-                            Rectangle zoom_text_bounds = LayoutRectangle(RL_OPPOSITE(GetTextWidth("100%")));
+                            Rectangle zoom_text_bounds = LayoutRectangle(RL_OPPOSITE(GetTextWidth("100%") + 2));
                             const char* zoom_text = TextFormat("%d%%", zoom_levels[state->grid_zoom]);
-                            GuiLabel(LayoutCenter(zoom_text_bounds, GetTextWidth(zoom_text), zoom_text_bounds.height), zoom_text);
+                            GuiLabel(LayoutCenter(zoom_text_bounds, GetTextWidth(zoom_text) + 2, zoom_text_bounds.height), zoom_text);
 
                             if (state->grid_zoom <= zoom_level_min) {
                                 GuiDisable();
@@ -259,7 +259,7 @@ void run_screen(UI_State *state) {
                                 break;
                             case CELL_NUMBER: {
                                 const char* text = TextFormat("%d", cursor.cell->value);
-                                GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text), cell_bounds.height), text);
+                                GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text) + 2, cell_bounds.height), text);
                                 break;
                             }
                             case CELL_MOVE_LEFT:
@@ -275,7 +275,7 @@ void run_screen(UI_State *state) {
                             case CELL_CMP_NOTEQUAL:
                             case CELL_TIMEWARP: {
                                 const char* text = symbols[cursor.cell->kind];
-                                GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text), cell_bounds.height), text);
+                                GuiLabel(LayoutCenter(cell_bounds, GetTextWidth(text) + 2, cell_bounds.height), text);
                                 break;
                             }
                             default: {
